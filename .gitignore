@@ -12,10 +12,10 @@ env/
 .env/
 
 # Data (raw images, masks, annotations — store separately)
-data/
+/data/
 
-# Model weights & checkpoints
-models/
+# Model weights & checkpoints (root-level only — does NOT affect src/models/)
+/models/
 *.pt
 *.pth
 *.onnx
