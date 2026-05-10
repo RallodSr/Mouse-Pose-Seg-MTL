@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Data (raw images, masks, annotations — store separately)
+data/
+
+# Model weights & checkpoints
+models/
+*.pt
+*.pth
+*.onnx
+
+# YOLO datasets (generated — not source of truth)
+data/yolo_pose/
+data/yolo_seg/
+
+# Training artifacts
+runs/
+*.yaml.bak
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Misc
+*.log
