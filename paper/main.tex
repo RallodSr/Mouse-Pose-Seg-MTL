@@ -117,9 +117,17 @@ Multi-task learning (MTL) exploits shared representations to improve
 generalization across related tasks \cite{caruana1997multitask}.
 In human pose and segmentation, Parsing R-CNN
 \cite{yang2019parsingrcnn} and UniPose \cite{jin2020whole} demonstrate
-that joint training improves both tasks. To our knowledge, no prior
-work applies MTL jointly for segmentation and pose estimation of
-laboratory animals across diverse behavioral paradigms.
+that joint training improves both tasks.
+
+The most closely related work is STCS \cite{tang2024stcs}, which
+addresses segmentation and pose estimation of laboratory mice but
+treats them as sequential stages in a modular pipeline, each relying
+on a separate model. This design requires bounding-box annotations
+for top-down pose inference and incurs the overhead of running
+multiple models. By contrast, HybridMTLNet employs multi-task
+learning to perform both tasks jointly through a single shared
+encoder, requiring no bounding-box supervision and producing both
+outputs in one forward pass.
 
 % ------------------------------------------------------------------
 \section{Methodology}
