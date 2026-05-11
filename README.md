@@ -20,10 +20,10 @@
 
 | Model | mIoU | PCK@0.05 |
 |---|---|---|
-| YOLO26m-Seg | 0.5383 | — |
-| YOLO26m-Pose | — | 0.9105 |
+| YOLO26m-Seg | 0.5451 | — |
+| YOLO26m-Pose | — | 0.8872 |
 | **HybridMTLNet (Ours)** | **0.8113** | **0.9621** |
-| Δ vs. YOLO baseline | +0.2730 | +0.0516 |
+| Δ vs. YOLO baseline | +0.2662 | +0.0749 |
 
 ---
 

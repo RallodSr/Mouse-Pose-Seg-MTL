@@ -46,8 +46,8 @@ deconvolutional pose head. Instance ambiguity is resolved at training
 time via Hungarian matching on mask IoU, enabling order-invariant
 learning. Evaluated on a dataset of 4{,}000 images spanning eight
 behavioral test paradigms, HybridMTLNet achieves 0.8113 mIoU and
-0.9621 PCK@0.05, outperforming the YOLOv8 single-task baselines by
-\(+0.273\) mIoU and \(+0.052\) PCK respectively, while unifying both
+0.9621 PCK@0.05, outperforming the YOLO26 single-task baselines by
+\(+0.266\) mIoU and \(+0.075\) PCK respectively, while unifying both
 tasks in a single model.
 \end{abstract}
 
@@ -74,7 +74,7 @@ significantly, most notably through DeepLabCut \cite{mathis2018deeplabcut}
 and SLEAP \cite{pereira2022sleap}. However, these systems treat pose
 estimation and body segmentation as independent tasks, requiring
 separate models and post-hoc integration. Object detection frameworks
-such as YOLOv8 \cite{jocher2023ultralytics} offer unified detection
+such as YOLO26 \cite{jocher2023ultralytics} offer unified detection
 and segmentation or pose estimation, but again in separate model
 variants rather than a single unified representation.
 
@@ -106,7 +106,7 @@ segmentation.
 
 \subsection{Instance Segmentation}
 Mask R-CNN \cite{he2017maskrcnn} established the detect-then-segment
-paradigm, while more recent one-stage methods such as YOLOv8-Seg
+paradigm, while more recent one-stage methods such as YOLO26-Seg
 \cite{jocher2023ultralytics} achieve real-time instance segmentation
 through a lightweight prototype mask head. These methods require
 bounding-box annotations and produce segmentation independently of
@@ -230,7 +230,7 @@ and keypoint coordinates.
 HybridMTLNet is implemented in PyTorch 2.0. Training uses the
 Adam optimizer with initial learning rate \(10^{-4}\), reduced by
 0.5$\times$ at epoch 84, for a total of 100 epochs with batch
-size 16. YOLO baselines use YOLOv8m with the same 256\(\times\)256
+size 16. YOLO baselines use YOLO26m with the same 256\(\times\)256
 input resolution and 100 training epochs. All experiments are
 conducted on a single NVIDIA GPU with at least 6~GB VRAM.
 
@@ -253,12 +253,12 @@ Invisible keypoints (annotated as origin) are excluded from
 the count.
 
 \subsection{Baseline Models}
-We compare against two YOLOv8m \cite{jocher2023ultralytics}
+We compare against two YOLO26m \cite{jocher2023ultralytics}
 variants trained on the same split:
 \begin{itemize}
-  \item \textbf{YOLO-Seg}: YOLOv8m-seg trained for instance
+  \item \textbf{YOLO-Seg}: YOLO26m-seg trained for instance
         segmentation, evaluated on mIoU.
-  \item \textbf{YOLO-Pose}: YOLOv8m-pose trained for keypoint
+  \item \textbf{YOLO-Pose}: YOLO26m-pose trained for keypoint
         estimation, evaluated on PCK@0.05.
 \end{itemize}
 Both baselines operate as single-task models and cannot jointly
@@ -278,20 +278,20 @@ produce segmentation and pose outputs.
 \toprule
 \textbf{Model} & \textbf{Tasks} & \textbf{mIoU} & \textbf{PCK@0.05} \\
 \midrule
-YOLOv8m-Seg  & Seg only  & 0.5383 & —      \\
-YOLOv8m-Pose & Pose only & —      & 0.9105 \\
+YOLO26m-Seg  & Seg only  & 0.5451 & —      \\
+YOLO26m-Pose & Pose only & —      & 0.8872 \\
 \midrule
 \textbf{HybridMTLNet (Ours)} & \textbf{Seg + Pose} & \textbf{0.8113} & \textbf{0.9621} \\
 \midrule
-\multicolumn{2}{l}{\(\Delta\) vs.\ YOLO baseline} & +0.273 & +0.052 \\
+\multicolumn{2}{l}{\(\Delta\) vs.\ YOLO baseline} & +0.266 & +0.075 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 Table~\ref{tab:results} presents results on the held-out test set.
 HybridMTLNet achieves 0.8113 mIoU and 0.9621 PCK@0.05, surpassing
-the YOLO-Seg baseline by \(+0.273\) mIoU (\(+50.7\%\) relative)
-and the YOLO-Pose baseline by \(+0.052\) PCK (\(+5.7\%\) relative).
+the YOLO26m-Seg baseline by \(+0.266\) mIoU (\(+48.8\%\) relative)
+and the YOLO26m-Pose baseline by \(+0.075\) PCK (\(+8.4\%\) relative).
 
 The substantial mIoU advantage stems from two factors. First,
 the U-Net decoder with skip connections preserves fine-grained
@@ -326,7 +326,7 @@ simultaneous instance segmentation and pose estimation of laboratory
 mice. By sharing a ResNet-34 encoder between a U-Net segmentation
 decoder and a deconvolutional pose head, and by employing Hungarian
 matching for order-invariant training, our method outperforms
-single-task YOLOv8 baselines on both tasks across a diverse
+single-task YOLO26 baselines on both tasks across a diverse
 eight-paradigm behavioral dataset. These results suggest that
 joint learning of segmentation and pose is mutually beneficial,
 and that HybridMTLNet provides a practical, unified tool for
