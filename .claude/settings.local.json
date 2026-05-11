@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python app/infer_images.py --help)",
+      "Bash(python app/infer_mtl_video.py --help)",
+      "Bash(python -c \"import torch; print\\(torch.__version__\\)\")",
+      "Bash(python -c \"import torch; m = torch.load\\('models/checkpoints/model_best.pth', map_location='cpu'\\); print\\(type\\(m\\)\\); print\\(list\\(m.keys\\(\\)\\)[:5]\\)\")",
+      "Bash(python app/infer_images.py --weights models/checkpoints/model_best.pth)"
+    ]
+  }
+}

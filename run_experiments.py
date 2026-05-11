@@ -21,7 +21,6 @@ import copy
 import json
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import DataLoader
 
@@ -36,9 +35,9 @@ from src.training.trainer import Trainer
 # ---------------------------------------------------------------------------
 
 EXPERIMENTS = [
-    {"name": "1_100",  "label": "1:100",   "seg_weight": 1, "pose_weight": 100},
-    {"name": "1_300",  "label": "1:300",  "seg_weight": 1, "pose_weight": 300},
-    {"name": "1_500",  "label": "1:500",  "seg_weight": 1, "pose_weight": 500},
+    {"name": "1_1",   "label": "1:1",   "seg_weight": 1, "pose_weight": 1},
+    {"name": "1_100", "label": "1:100", "seg_weight": 1, "pose_weight": 100},
+    {"name": "1_500", "label": "1:500", "seg_weight": 1, "pose_weight": 500},
     {"name": "1_1000", "label": "1:1000", "seg_weight": 1, "pose_weight": 1000},
 ]
 
@@ -135,17 +134,21 @@ def _evaluate_test(train_cfg) -> tuple[float, float]:
     if not weights.exists():
         weights = Path(train_cfg.output_dir) / "model_final.pth"
 
-    model = HybridMTLNet(MODEL_CFG.num_classes, MODEL_CFG.num_keypoints).to(device)
+    model = HybridMTLNet(MODEL_CFG.num_instances, MODEL_CFG.num_keypoints).to(device)
     model.load_state_dict(torch.load(weights, map_location=device))
     model.eval()
+
+    from src.training.trainer import _match_instances
+    n_kp = MODEL_CFG.num_keypoints // MODEL_CFG.num_instances
 
     total_miou = total_pck = 0.0
     with torch.no_grad():
         for imgs, masks, hms in test_dl:
             imgs, masks, hms = imgs.to(device), masks.to(device), hms.to(device)
             pred_seg, pred_pose = model(imgs)
-            total_miou += calculate_miou(pred_seg, masks)
-            total_pck  += calculate_pck(pred_pose, hms, train_cfg.pck_threshold)
+            masks_m, hms_m = _match_instances(pred_seg, masks, hms, n_kp)
+            total_miou += calculate_miou(pred_seg, masks_m)
+            total_pck  += calculate_pck(pred_pose, hms_m, train_cfg.pck_threshold)
 
     n = len(test_dl)
     return total_miou / n, total_pck / n
@@ -170,6 +173,7 @@ def _save_results(results: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def plot_comparison(results: dict) -> None:
+    import matplotlib.pyplot as plt
     labels = [r["label"]     for r in results.values()]
     mious  = [r["test_miou"] for r in results.values()]
     pcks   = [r["test_pck"]  for r in results.values()]

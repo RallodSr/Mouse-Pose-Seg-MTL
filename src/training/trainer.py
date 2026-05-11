@@ -2,10 +2,11 @@ import csv
 import json
 from pathlib import Path
 
-import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from scipy.optimize import linear_sum_assignment
 from torch.utils.data import DataLoader
 
 from src.data.dataset import MouseMTLDataset
@@ -21,6 +22,79 @@ _LOG_FIELDS = [
 ]
 
 
+def _dice_loss(pred_logits: torch.Tensor, gt_masks: torch.Tensor, smooth: float = 1.0) -> torch.Tensor:
+    """Dice loss for per-instance binary segmentation (Milletari et al., V-Net 2016).
+    Handles class imbalance between background and foreground naturally.
+    Empty GT slots (padding for 1-mouse images) are skipped.
+
+    pred_logits : (B, N, H, W) raw logits
+    gt_masks    : (B, N, H, W) binary float
+    """
+    pred = torch.sigmoid(pred_logits)
+    B, N = pred.shape[:2]
+
+    losses = []
+    for b in range(B):
+        for n in range(N):
+            if gt_masks[b, n].sum() < 1:   # empty slot — skip
+                continue
+            p = pred[b, n].reshape(-1)
+            g = gt_masks[b, n].reshape(-1)
+            inter = (p * g).sum()
+            losses.append(1.0 - (2.0 * inter + smooth) / (p.sum() + g.sum() + smooth))
+
+    if not losses:
+        return pred_logits.sum() * 0.0   # zero with gradient attached
+    return torch.stack(losses).mean()
+
+
+def _match_instances(
+    pred_seg_logits: torch.Tensor,
+    gt_masks:        torch.Tensor,
+    gt_hms:          torch.Tensor,
+    n_kp:            int,
+) -> tuple:
+    """Hungarian matching: reorder GT instances to best align with predictions.
+
+    Uses mask IoU as similarity. Matching decisions are detached from the graph
+    so gradients flow only through the loss, not through the assignment.
+
+    Args:
+        pred_seg_logits : (B, N, H, W) raw logits
+        gt_masks        : (B, N, H, W) binary float masks
+        gt_hms          : (B, N*n_kp, H, W) GT heatmaps
+        n_kp            : keypoints per instance
+
+    Returns:
+        matched_gt_masks, matched_gt_hms — same shape as inputs, GT permuted per sample
+    """
+    B, N = pred_seg_logits.shape[:2]
+    pred_bin = (torch.sigmoid(pred_seg_logits) > 0.5).detach().cpu().numpy().astype(np.float32)
+    gt_np    = gt_masks.detach().cpu().numpy().astype(np.float32)
+
+    matched_masks = gt_masks.clone()
+    matched_hms   = gt_hms.clone()
+
+    for b in range(B):
+        # N×N cost matrix: 1 - IoU(pred_i, gt_j)
+        cost = np.ones((N, N), dtype=np.float32)
+        for i in range(N):
+            for j in range(N):
+                inter = (pred_bin[b, i] * gt_np[b, j]).sum()
+                union = pred_bin[b, i].sum() + gt_np[b, j].sum() - inter
+                cost[i, j] = 1.0 - inter / (union + 1e-6)
+
+        _, col_ind = linear_sum_assignment(cost)
+        # col_ind[i] = GT slot matched to pred slot i
+        matched_masks[b] = gt_masks[b][col_ind]
+        matched_hms[b]   = torch.cat([
+            gt_hms[b, col_ind[i] * n_kp:(col_ind[i] + 1) * n_kp]
+            for i in range(N)
+        ])
+
+    return matched_masks, matched_hms
+
+
 class Trainer:
     def __init__(self, data_cfg, model_cfg, train_cfg):
         self.dcfg = data_cfg
@@ -29,6 +103,7 @@ class Trainer:
         self.device = torch.device(train_cfg.device)
         self.out_dir = Path(train_cfg.output_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
+        self.n_kp = model_cfg.num_keypoints // model_cfg.num_instances  # kp per instance
 
     # ------------------------------------------------------------------
     # Public API
@@ -36,11 +111,11 @@ class Trainer:
 
     def run(self):
         train_dl, val_dl = self._build_loaders()
-        model = HybridMTLNet(self.mcfg.num_classes, self.mcfg.num_keypoints).to(self.device)
+        model = HybridMTLNet(self.mcfg.num_instances, self.mcfg.num_keypoints).to(self.device)
         optimizer = optim.Adam(model.parameters(), lr=self.tcfg.lr)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", patience=5, factor=0.5)
 
-        crit_seg  = nn.CrossEntropyLoss()
+        crit_seg  = nn.BCEWithLogitsLoss()
         crit_pose = nn.MSELoss()
 
         history = {k: [] for k in [
@@ -110,8 +185,10 @@ class Trainer:
             optimizer.zero_grad()
             pred_seg, pred_pose = model(imgs)
 
-            l_seg  = crit_seg(pred_seg, masks)
-            l_pose = crit_pose(pred_pose, hms)
+            masks_m, hms_m = _match_instances(pred_seg, masks, hms, self.n_kp)
+
+            l_seg  = crit_seg(pred_seg, masks_m) + _dice_loss(pred_seg, masks_m)
+            l_pose = crit_pose(pred_pose, hms_m)
             loss   = self.tcfg.loss_seg_weight * l_seg + self.tcfg.loss_pose_weight * l_pose
 
             loss.backward()
@@ -120,8 +197,8 @@ class Trainer:
             totals["total_loss"] += loss.item()
             totals["loss_seg"]   += l_seg.item()
             totals["loss_pose"]  += l_pose.item()
-            totals["miou"]       += calculate_miou(pred_seg, masks)
-            totals["pck"]        += calculate_pck(pred_pose, hms, self.tcfg.pck_threshold)
+            totals["miou"]       += calculate_miou(pred_seg, masks_m)
+            totals["pck"]        += calculate_pck(pred_pose, hms_m, self.tcfg.pck_threshold)
 
         n = len(dataloader)
         return {k: v / n for k, v in totals.items()}
@@ -136,15 +213,17 @@ class Trainer:
 
                 pred_seg, pred_pose = model(imgs)
 
-                l_seg  = crit_seg(pred_seg, masks)
-                l_pose = crit_pose(pred_pose, hms)
+                masks_m, hms_m = _match_instances(pred_seg, masks, hms, self.n_kp)
+
+                l_seg  = crit_seg(pred_seg, masks_m) + _dice_loss(pred_seg, masks_m)
+                l_pose = crit_pose(pred_pose, hms_m)
                 loss   = self.tcfg.loss_seg_weight * l_seg + self.tcfg.loss_pose_weight * l_pose
 
                 totals["total_loss"] += loss.item()
                 totals["loss_seg"]   += l_seg.item()
                 totals["loss_pose"]  += l_pose.item()
-                totals["miou"]       += calculate_miou(pred_seg, masks)
-                totals["pck"]        += calculate_pck(pred_pose, hms, self.tcfg.pck_threshold)
+                totals["miou"]       += calculate_miou(pred_seg, masks_m)
+                totals["pck"]        += calculate_pck(pred_pose, hms_m, self.tcfg.pck_threshold)
 
         n = len(dataloader)
         return {k: v / n for k, v in totals.items()}
@@ -154,7 +233,6 @@ class Trainer:
     # ------------------------------------------------------------------
 
     def _init_log(self) -> Path:
-        """Create train_log.csv with header. Returns path."""
         log_path = self.out_dir / "train_log.csv"
         with open(log_path, "w", newline="") as f:
             csv.DictWriter(f, fieldnames=_LOG_FIELDS).writeheader()
@@ -180,7 +258,7 @@ class Trainer:
             csv.DictWriter(f, fieldnames=_LOG_FIELDS).writerow(row)
 
     # ------------------------------------------------------------------
-    # Plotting
+    # Data & Plotting
     # ------------------------------------------------------------------
 
     def _build_loaders(self):
@@ -188,7 +266,8 @@ class Trainer:
             data = json.load(f)
 
         def make_loader(split_key: str, shuffle: bool):
-            ds = MouseMTLDataset(data[split_key], self.dcfg.target_size, self.dcfg.sigma)
+            ds = MouseMTLDataset(data[split_key], self.dcfg.target_size, self.dcfg.sigma,
+                                 augment=(split_key == "train"))
             return DataLoader(ds, batch_size=self.tcfg.batch_size, shuffle=shuffle,
                               num_workers=self.tcfg.num_workers, pin_memory=True)
 
@@ -196,12 +275,13 @@ class Trainer:
                make_loader("val",   shuffle=False) if "val" in data else None
 
     def _plot_history(self, history: dict) -> None:
+        import matplotlib.pyplot as plt
         epochs = range(1, len(history["total_loss"]) + 1)
         fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
         axes[0].plot(epochs, history["loss_seg"],     color="tab:orange", label="Train")
         axes[0].plot(epochs, history["val_loss_seg"], color="tab:orange", linestyle="--", label="Val")
-        axes[0].set(title="Segmentation Loss (CE)", xlabel="Epoch", ylabel="Loss")
+        axes[0].set(title="Segmentation Loss (BCE)", xlabel="Epoch", ylabel="Loss")
         axes[0].legend()
 
         axes[1].plot(epochs, history["loss_pose"],     color="tab:purple", label="Train")

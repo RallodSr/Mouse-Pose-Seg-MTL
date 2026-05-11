@@ -80,17 +80,21 @@ def cmd_eval(args):
     test_dl = DataLoader(test_ds, batch_size=TRAIN_CFG.batch_size, shuffle=False,
                          num_workers=TRAIN_CFG.num_workers)
 
-    model = HybridMTLNet(MODEL_CFG.num_classes, MODEL_CFG.num_keypoints).to(device)
+    model = HybridMTLNet(MODEL_CFG.num_instances, MODEL_CFG.num_keypoints).to(device)
     model.load_state_dict(torch.load(args.weights, map_location=device))
     model.eval()
+
+    from src.training.trainer import _match_instances
+    n_kp = MODEL_CFG.num_keypoints // MODEL_CFG.num_instances
 
     total_miou = total_pck = 0.0
     with torch.no_grad():
         for imgs, masks, hms in test_dl:
             imgs, masks, hms = imgs.to(device), masks.to(device), hms.to(device)
             pred_seg, pred_pose = model(imgs)
-            total_miou += calculate_miou(pred_seg, masks)
-            total_pck += calculate_pck(pred_pose, hms, TRAIN_CFG.pck_threshold)
+            masks_m, hms_m = _match_instances(pred_seg, masks, hms, n_kp)
+            total_miou += calculate_miou(pred_seg, masks_m)
+            total_pck  += calculate_pck(pred_pose, hms_m, TRAIN_CFG.pck_threshold)
 
     n = len(test_dl)
     print(f"Test mIoU : {total_miou/n:.4f}")
@@ -139,10 +143,10 @@ def build_parser() -> argparse.ArgumentParser:
 if __name__ == "__main__":
     args = build_parser().parse_args()
     dispatch = {
-        "prepare": cmd_prepare,
-        "convert": cmd_convert,
-        "train": cmd_train,
-        "eval": cmd_eval,
-        "eval-yolo": cmd_eval_yolo,
+        "prepare":     cmd_prepare,
+        "convert":     cmd_convert,
+        "train":       cmd_train,
+        "eval":        cmd_eval,
+        "eval-yolo":   cmd_eval_yolo,
     }
     dispatch[args.command](args)

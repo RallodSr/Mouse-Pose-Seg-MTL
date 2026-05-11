@@ -15,8 +15,8 @@ class DataConfig:
 
 @dataclass
 class ModelConfig:
-    num_classes: int = 2
-    num_keypoints: int = 3
+    num_instances: int = 2   # max mice per image (= seg output channels)
+    num_keypoints: int = 6   # NUM_KEYPOINTS_PER_MOUSE(3) × MAX_INSTANCES(2)
 
 
 @dataclass
@@ -25,8 +25,7 @@ class TrainConfig:
     epochs: int = 100
     lr: float = 1e-4
     loss_seg_weight: float = 1
-    # Scale factor to balance MSE vs CE magnitudes
-    loss_pose_weight: float = 1
+    loss_pose_weight: float = 400
     pck_threshold: float = 0.05
     checkpoint_interval: int = 10
     output_dir: str = "models/checkpoints"

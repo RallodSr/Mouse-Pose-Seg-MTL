@@ -130,7 +130,7 @@ def convert_yolo_pose(
     output_dir: str = "data/yolo_pose",
 ) -> None:
     print("Converting to YOLO Pose format...")
-    for split in ["train", "test"]:
+    for split in ["train", "val", "test"]:
         os.makedirs(os.path.join(output_dir, "images", split), exist_ok=True)
         os.makedirs(os.path.join(output_dir, "labels", split), exist_ok=True)
 
@@ -138,7 +138,7 @@ def convert_yolo_pose(
         data = json.load(f)
 
     for split_name, items in data.items():
-        if split_name not in ["train", "test"]:
+        if split_name not in ["train", "val", "test"]:
             continue
         print(f"  [{split_name}]")
         for item in tqdm(items):
@@ -189,7 +189,7 @@ def convert_yolo_pose(
     with open(yaml_path, "w") as f:
         f.write(
             f"path: {os.path.abspath(output_dir)}\n"
-            "train: images/train\nval: images/test\n\n"
+            "train: images/train\nval: images/val\n\n"
             "names:\n  0: mouse\n\nkpt_shape: [3, 3]\n"
         )
     print(f"YOLO Pose dataset ready at {output_dir}")
@@ -204,7 +204,7 @@ def convert_yolo_seg(
     output_dir: str = "data/yolo_seg",
 ) -> None:
     print("Converting to YOLO Seg format...")
-    for split in ["train", "test"]:
+    for split in ["train", "val", "test"]:
         os.makedirs(os.path.join(output_dir, "images", split), exist_ok=True)
         os.makedirs(os.path.join(output_dir, "labels", split), exist_ok=True)
 
@@ -212,7 +212,7 @@ def convert_yolo_seg(
         data = json.load(f)
 
     for split_name, items in data.items():
-        if split_name not in ["train", "test"]:
+        if split_name not in ["train", "val", "test"]:
             continue
         print(f"  [{split_name}]")
         for item in tqdm(items):
@@ -249,7 +249,7 @@ def convert_yolo_seg(
     with open(yaml_path, "w") as f:
         f.write(
             f"path: {os.path.abspath(output_dir)}\n"
-            "train: images/train\nval: images/test\n\n"
+            "train: images/train\nval: images/val\n\n"
             "names:\n  0: mouse\n"
         )
     print(f"YOLO Seg dataset ready at {output_dir}")

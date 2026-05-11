@@ -1,0 +1,342 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{hyperref}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Multi-Task Learning for Simultaneous Instance Segmentation\\
+and Pose Estimation of Laboratory Mice}
+
+\author{
+  \IEEEauthorblockN{Thanabat Sriphrom}
+  \IEEEauthorblockA{
+    \textit{Department of Computer Engineering}\\
+    \textit{[University Name]}\\
+    Bangkok, Thailand\\
+    thanabat.srp@gmail.com
+  }
+}
+
+\maketitle
+
+% ------------------------------------------------------------------
+\begin{abstract}
+Automated behavioral analysis of laboratory mice is essential for
+preclinical drug evaluation, yet existing pose estimation and
+segmentation tools operate as separate pipelines requiring manual
+integration. We propose \textbf{HybridMTLNet}, a multi-task learning
+framework that simultaneously performs instance segmentation and
+keypoint estimation for up to two mice in a single forward pass,
+without requiring bounding-box annotations. The architecture comprises
+a shared ResNet-34 encoder, a U-Net segmentation decoder, and a
+deconvolutional pose head. Instance ambiguity is resolved at training
+time via Hungarian matching on mask IoU, enabling order-invariant
+learning. Evaluated on a dataset of 4{,}000 images spanning eight
+behavioral test paradigms, HybridMTLNet achieves 0.8113 mIoU and
+0.9621 PCK@0.05, outperforming the YOLOv8 single-task baselines by
+\(+0.273\) mIoU and \(+0.052\) PCK respectively, while unifying both
+tasks in a single model.
+\end{abstract}
+
+\begin{IEEEkeywords}
+multi-task learning, pose estimation, instance segmentation,
+laboratory mice, behavioral analysis, Gaussian heatmap
+\end{IEEEkeywords}
+
+% ------------------------------------------------------------------
+\section{Introduction}
+
+Behavioral phenotyping of laboratory mice is a cornerstone of
+preclinical neuroscience and pharmacology. Tasks such as Y-maze
+exploration, mirror-box interaction, and forced swim tests are
+routinely used to assess the efficacy of novel drug candidates.
+Traditional tracking systems, such as ANY-maze and EthoVision XT,
+rely on color-based blob detection or physical markers attached to
+the animal, both of which fail under occlusion, varying illumination,
+or multi-animal interaction, and may alter natural behavior
+\cite{mathis2018deeplabcut}.
+
+Deep learning has advanced markerless animal pose estimation
+significantly, most notably through DeepLabCut \cite{mathis2018deeplabcut}
+and SLEAP \cite{pereira2022sleap}. However, these systems treat pose
+estimation and body segmentation as independent tasks, requiring
+separate models and post-hoc integration. Object detection frameworks
+such as YOLOv8 \cite{jocher2023ultralytics} offer unified detection
+and segmentation or pose estimation, but again in separate model
+variants rather than a single unified representation.
+
+We address this gap by proposing \textbf{HybridMTLNet}, a hybrid
+multi-task architecture that produces per-instance segmentation masks
+and Gaussian keypoint heatmaps from a single shared encoder.
+The key contributions of this work are:
+
+\begin{itemize}
+  \item A unified architecture for simultaneous instance segmentation
+        and pose estimation without bounding-box supervision.
+  \item An order-invariant training scheme via Hungarian matching on
+        mask IoU, enabling robust multi-instance learning.
+  \item Comprehensive evaluation across eight behavioral paradigms
+        demonstrating consistent superiority over single-task baselines.
+\end{itemize}
+
+% ------------------------------------------------------------------
+\section{Related Work}
+
+\subsection{Animal Pose Estimation}
+Mathis et al.\ introduced DeepLabCut \cite{mathis2018deeplabcut},
+adapting ResNet-based transfer learning to lab-animal keypoint
+detection, establishing Gaussian heatmap regression as the dominant
+paradigm for animal pose estimation. SLEAP \cite{pereira2022sleap}
+extended this to multi-animal scenarios using part-affinity fields.
+Both systems, however, output only skeletal keypoints without body
+segmentation.
+
+\subsection{Instance Segmentation}
+Mask R-CNN \cite{he2017maskrcnn} established the detect-then-segment
+paradigm, while more recent one-stage methods such as YOLOv8-Seg
+\cite{jocher2023ultralytics} achieve real-time instance segmentation
+through a lightweight prototype mask head. These methods require
+bounding-box annotations and produce segmentation independently of
+keypoints.
+
+\subsection{Multi-Task Learning}
+Multi-task learning (MTL) exploits shared representations to improve
+generalization across related tasks \cite{caruana1997multitask}.
+In human pose and segmentation, Parsing R-CNN
+\cite{yang2019parsingrcnn} and UniPose \cite{jin2020whole} demonstrate
+that joint training improves both tasks. To our knowledge, no prior
+work applies MTL jointly for segmentation and pose estimation of
+laboratory animals across diverse behavioral paradigms.
+
+% ------------------------------------------------------------------
+\section{Methodology}
+
+\subsection{Dataset}
+We curate a dataset of 4{,}000 images captured from eight standard
+behavioral test paradigms: Y-maze, mirror box, forced swim, open
+field, elevated plus maze, rotarod, social interaction, and novel
+object recognition. Images contain one or two C57BL/6 mice and are
+annotated with per-instance binary segmentation masks and three
+skeletal keypoints per animal (nose, shoulder, tail base).
+Critically, no bounding-box annotations are required.
+Images are split 80\,/\,10\,/\,10 into train, validation, and test sets.
+Original image resolution is 640\(\times\)360 pixels; all models
+are trained and evaluated at 256\(\times\)256.
+
+\subsection{Architecture}
+
+\begin{figure}[t]
+  \centering
+  % Replace with actual figure
+  % \includegraphics[width=\columnwidth]{figures/architecture.pdf}
+  \fbox{\rule{0pt}{3cm}\rule{\columnwidth}{0pt}}
+  \caption{HybridMTLNet architecture. A shared ResNet-34 encoder
+  feeds into (1) a U-Net segmentation decoder producing two binary
+  instance masks and (2) a deconvolutional pose head producing six
+  Gaussian heatmaps (3 keypoints \(\times\) 2 instances).}
+  \label{fig:arch}
+\end{figure}
+
+HybridMTLNet (Fig.~\ref{fig:arch}) consists of three components:
+
+\noindent\textbf{Shared Encoder.}
+A ResNet-34 \cite{he2016resnet} backbone pre-trained on ImageNet
+serves as a shared feature extractor. Skip connections at four
+resolution levels are preserved for the segmentation decoder.
+
+\noindent\textbf{Segmentation Decoder.}
+A U-Net-style decoder \cite{ronneberger2015unet} progressively
+upsamples encoder features via bilinear interpolation and skip
+connections, producing a two-channel output \(\hat{S} \in
+\mathbb{R}^{2 \times H \times W}\), where each channel represents
+the binary mask of one mouse instance.
+
+\noindent\textbf{Pose Head.}
+Four successive deconvolutional layers upsample the bottleneck
+features to produce six Gaussian heatmaps \(\hat{H} \in
+\mathbb{R}^{6 \times H \times W}\) (3~keypoints \(\times\)
+2~instances). Keypoint coordinates are recovered as the
+\(\arg\max\) of each heatmap channel.
+
+\subsection{Loss Function}
+The total loss is a weighted sum:
+\begin{equation}
+  \mathcal{L} = \lambda_{\text{seg}}\,\mathcal{L}_{\text{seg}}
+              + \lambda_{\text{pose}}\,\mathcal{L}_{\text{pose}}
+  \label{eq:loss}
+\end{equation}
+
+The segmentation loss combines binary cross-entropy and Dice loss
+\cite{milletari2016vnet}:
+\begin{equation}
+  \mathcal{L}_{\text{seg}} = \mathcal{L}_{\text{BCE}} +
+  \left(1 - \frac{2\sum p\,g}{\sum p + \sum g + \epsilon}\right)
+\end{equation}
+
+The pose loss is mean-squared error between predicted and target
+Gaussian heatmaps:
+\begin{equation}
+  \mathcal{L}_{\text{pose}} = \frac{1}{K}
+  \sum_{k=1}^{K} \|\hat{H}_k - H_k\|_2^2
+\end{equation}
+
+Because MSE on sparse Gaussian maps is naturally two to three orders
+of magnitude smaller than BCE+Dice, we set
+\(\lambda_{\text{seg}} = 1\) and \(\lambda_{\text{pose}} = 400\)
+to balance gradient magnitudes.
+
+\subsection{Order-Invariant Instance Matching}
+Since instance ordering is arbitrary, we apply Hungarian matching
+\cite{kuhn1955hungarian} at each training step. A cost matrix
+\(C \in \mathbb{R}^{N_{\text{pred}} \times N_{\text{gt}}}\) is
+constructed using pairwise mask IoU, and the optimal assignment
+is solved via the linear sum assignment algorithm. Ground-truth
+masks and heatmaps are reordered accordingly before computing
+\(\mathcal{L}\).
+
+\subsection{Data Augmentation}
+Training images undergo random horizontal flip (p\,=\,0.5),
+vertical flip (p\,=\,0.5), rotation \(\pm 30^\circ\)
+(p\,=\,0.5), and color jitter (brightness \(\times[0.7,1.3]\),
+contrast \(\times[0.8,1.2]\), p\,=\,0.5). All geometric
+transformations are applied consistently to images, masks,
+and keypoint coordinates.
+
+% ------------------------------------------------------------------
+\section{Experiments}
+
+\subsection{Implementation Details}
+HybridMTLNet is implemented in PyTorch 2.0. Training uses the
+Adam optimizer with initial learning rate \(10^{-4}\), reduced by
+0.5$\times$ at epoch 84, for a total of 100 epochs with batch
+size 16. YOLO baselines use YOLOv8m with the same 256\(\times\)256
+input resolution and 100 training epochs. All experiments are
+conducted on a single NVIDIA GPU with at least 6~GB VRAM.
+
+\subsection{Evaluation Metrics}
+
+\noindent\textbf{mIoU.}
+Mean Intersection over Union over matched instance pairs:
+\begin{equation}
+  \text{mIoU} = \frac{1}{N}\sum_{i=1}^{N}
+  \frac{|P_i \cap G_i|}{|P_i \cup G_i|}
+\end{equation}
+Instance pairs are found via Hungarian matching on mask IoU,
+consistent with the training objective.
+
+\noindent\textbf{PCK@0.05.}
+Percentage of Correct Keypoints with threshold 5\% of image
+size (12.8\,px at 256\(\times\)256), following Yang and Ramanan
+\cite{yang2013pck} and Mathis et al.\ \cite{mathis2018deeplabcut}.
+Invisible keypoints (annotated as origin) are excluded from
+the count.
+
+\subsection{Baseline Models}
+We compare against two YOLOv8m \cite{jocher2023ultralytics}
+variants trained on the same split:
+\begin{itemize}
+  \item \textbf{YOLO-Seg}: YOLOv8m-seg trained for instance
+        segmentation, evaluated on mIoU.
+  \item \textbf{YOLO-Pose}: YOLOv8m-pose trained for keypoint
+        estimation, evaluated on PCK@0.05.
+\end{itemize}
+Both baselines operate as single-task models and cannot jointly
+produce segmentation and pose outputs.
+
+% ------------------------------------------------------------------
+\section{Results and Discussion}
+
+\subsection{Quantitative Comparison}
+
+\begin{table}[t]
+\caption{Test set performance. Best results in \textbf{bold}.
+``—'' indicates the model does not perform that task.}
+\label{tab:results}
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model} & \textbf{Tasks} & \textbf{mIoU} & \textbf{PCK@0.05} \\
+\midrule
+YOLOv8m-Seg  & Seg only  & 0.5383 & —      \\
+YOLOv8m-Pose & Pose only & —      & 0.9105 \\
+\midrule
+\textbf{HybridMTLNet (Ours)} & \textbf{Seg + Pose} & \textbf{0.8113} & \textbf{0.9621} \\
+\midrule
+\multicolumn{2}{l}{\(\Delta\) vs.\ YOLO baseline} & +0.273 & +0.052 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:results} presents results on the held-out test set.
+HybridMTLNet achieves 0.8113 mIoU and 0.9621 PCK@0.05, surpassing
+the YOLO-Seg baseline by \(+0.273\) mIoU (\(+50.7\%\) relative)
+and the YOLO-Pose baseline by \(+0.052\) PCK (\(+5.7\%\) relative).
+
+The substantial mIoU advantage stems from two factors. First,
+the U-Net decoder with skip connections preserves fine-grained
+spatial detail at 256\(\times\)256 resolution, whereas YOLO's
+prototype mask head is designed for 640\(\times\)640 inputs.
+Second, shared encoder features learned jointly with pose
+estimation provide richer representations that benefit segmentation.
+
+The PCK improvement, while smaller in absolute terms, is notable
+because it is achieved while \emph{simultaneously} performing
+segmentation. This demonstrates that MTL does not degrade pose
+accuracy — the shared encoder learns complementary features for
+both tasks.
+
+\subsection{Training Dynamics}
+The segmentation loss converges by epoch 30 (mIoU\,\(\approx\)\,0.78),
+after which pose PCK continues to improve, reaching 0.9412 on the
+validation set by epoch 84. The train/validation gap remains small
+throughout (mIoU: 0.031, PCK: 0.019), indicating good generalization
+without overfitting.
+
+\subsection{Inference Efficiency}
+HybridMTLNet produces both segmentation and pose outputs in a single
+forward pass, eliminating the need to run two separate models.
+At 256\(\times\)256 resolution, this is well-suited for real-time
+deployment on standard laboratory hardware.
+
+% ------------------------------------------------------------------
+\section{Conclusion}
+We presented HybridMTLNet, a multi-task learning framework for
+simultaneous instance segmentation and pose estimation of laboratory
+mice. By sharing a ResNet-34 encoder between a U-Net segmentation
+decoder and a deconvolutional pose head, and by employing Hungarian
+matching for order-invariant training, our method outperforms
+single-task YOLOv8 baselines on both tasks across a diverse
+eight-paradigm behavioral dataset. These results suggest that
+joint learning of segmentation and pose is mutually beneficial,
+and that HybridMTLNet provides a practical, unified tool for
+automated preclinical behavioral analysis.
+
+\textbf{Limitations and Future Work.}
+The current architecture supports a maximum of two mice; extending
+to variable instance counts via dynamic slot allocation is a
+direction for future work. Additionally, temporal modeling across
+video frames could further improve tracking consistency for
+behavioral quantification.
+
+% ------------------------------------------------------------------
+\section*{Acknowledgment}
+[Advisor name and funding acknowledgment here.]
+
+% ------------------------------------------------------------------
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

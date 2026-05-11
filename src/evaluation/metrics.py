@@ -3,15 +3,26 @@ import numpy as np
 import torch
 
 
-def calculate_miou(pred_logits: torch.Tensor, target: torch.Tensor, num_classes: int = 2) -> float:
-    pred = torch.argmax(pred_logits, dim=1).view(-1).cpu().numpy()
-    gt = target.view(-1).cpu().numpy()
+def calculate_miou(pred_logits: torch.Tensor, target: torch.Tensor) -> float:
+    """Per-instance binary IoU averaged across non-empty instances and batch.
+    pred_logits : (B, N, H, W) raw logits  — sigmoid + threshold applied here
+    target      : (B, N, H, W) binary float masks
+    Instances where GT mask is all-zero (padding slot) are skipped.
+    """
+    pred = (torch.sigmoid(pred_logits) > 0.5).cpu().numpy()
+    gt   = target.cpu().numpy().astype(bool)
+
     ious = []
-    for cls in range(num_classes):
-        inter = ((pred == cls) & (gt == cls)).sum()
-        union = ((pred == cls) | (gt == cls)).sum()
-        if union > 0:
-            ious.append(inter / union)
+    B, N = pred.shape[:2]
+    for b in range(B):
+        for n in range(N):
+            if not gt[b, n].any():   # empty instance slot — skip
+                continue
+            inter = (pred[b, n] & gt[b, n]).sum()
+            union = (pred[b, n] | gt[b, n]).sum()
+            if union > 0:
+                ious.append(inter / union)
+
     return float(np.mean(ious)) if ious else 0.0
 
 

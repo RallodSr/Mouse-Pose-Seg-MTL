@@ -41,9 +41,14 @@ class _PoseDeconvHead(nn.Module):
 
 
 class HybridMTLNet(nn.Module):
-    """ResNet-34 backbone with shared encoder, U-Net seg decoder, and deconv pose head."""
+    """ResNet-34 backbone with shared encoder, U-Net seg decoder, and deconv pose head.
 
-    def __init__(self, num_classes: int = 2, num_keypoints: int = 3):
+    Outputs per-instance masks and heatmaps:
+      seg  : (B, num_instances, H, W) raw logits  — BCEWithLogitsLoss, one channel per mouse
+      pose : (B, num_keypoints,  H, W) heatmaps   — MSELoss, num_keypoints = 3 kp × num_instances
+    """
+
+    def __init__(self, num_instances: int = 2, num_keypoints: int = 6):
         super().__init__()
         base = models.resnet34(weights=ResNet34_Weights.DEFAULT)
         layers = list(base.children())
@@ -58,7 +63,7 @@ class HybridMTLNet(nn.Module):
         self.seg_dec3 = _SegDecoderBlock(256, 128, 128)
         self.seg_dec2 = _SegDecoderBlock(128, 64, 64)
         self.seg_dec1 = _SegDecoderBlock(64, 64, 64)
-        self.seg_head = nn.Conv2d(64, num_classes, 1)
+        self.seg_head = nn.Conv2d(64, num_instances, 1)
 
         self.pose_head = _PoseDeconvHead(512, num_keypoints)
 
