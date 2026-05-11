@@ -9,8 +9,8 @@
 | โมเดล | Architecture | Task | Metric |
 |---|---|---|---|
 | **HybridMTLNet** (ตัวหลัก) | ResNet-34 + U-Net decoder + Deconv head | Segmentation + Pose พร้อมกัน | mIoU + PCK |
-| YOLO-Seg baseline | YOLOv8m-seg | Instance Segmentation เท่านั้น | mIoU |
-| YOLO-Pose baseline | YOLOv8m-pose | Keypoint เท่านั้น | PCK |
+| YOLO-Seg baseline | YOLO26m-seg | Instance Segmentation เท่านั้น | mIoU |
+| YOLO-Pose baseline | YOLO26m-pose | Keypoint เท่านั้น | PCK |
 
 **HybridMTLNet** ใช้ ResNet-34 เป็น shared encoder โดย segmentation decoder เป็น U-Net (2 channels = 2 instance masks) และ pose head เป็น deconvolutional head (6 channels = 3 keypoints × 2 ตัว) การ assign instance ใช้ **Hungarian matching** บน mask IoU ทำให้ไม่ต้องเรียนรู้ลำดับ instance ที่ตายตัว
 
@@ -20,8 +20,8 @@
 
 | Model | mIoU | PCK@0.05 |
 |---|---|---|
-| YOLOv8m-Seg | 0.5383 | — |
-| YOLOv8m-Pose | — | 0.9105 |
+| YOLO26m-Seg | 0.5383 | — |
+| YOLO26m-Pose | — | 0.9105 |
 | **HybridMTLNet (Ours)** | **0.8113** | **0.9621** |
 | Δ vs. YOLO baseline | +0.2730 | +0.0516 |
 
@@ -167,8 +167,8 @@ python run_experiments.py --eval-only  # ประเมินจาก checkpoi
 ### YOLO Baseline
 
 ```bash
-yolo pose train data=data/yolo_pose/dataset.yaml model=yolov8m-pose.pt epochs=100 imgsz=256 amp=False
-yolo segment train data=data/yolo_seg/dataset_seg.yaml model=yolov8m-seg.pt epochs=100 imgsz=256 amp=False
+yolo pose train data=data/yolo_pose/dataset.yaml model=yolo26m-pose.pt epochs=100 imgsz=256 amp=False
+yolo segment train data=data/yolo_seg/dataset_seg.yaml model=yolo26m-seg.pt epochs=100 imgsz=256 amp=False
 ```
 
 ---
@@ -219,8 +219,8 @@ python main.py convert --task seg
 
 # 3. Train
 python main.py train
-yolo pose train data=data/yolo_pose/dataset.yaml model=yolov8m-pose.pt epochs=100 imgsz=256 amp=False
-yolo segment train data=data/yolo_seg/dataset_seg.yaml model=yolov8m-seg.pt epochs=100 imgsz=256 amp=False
+yolo pose train data=data/yolo_pose/dataset.yaml model=yolo26m-pose.pt epochs=100 imgsz=256 amp=False
+yolo segment train data=data/yolo_seg/dataset_seg.yaml model=yolo26m-seg.pt epochs=100 imgsz=256 amp=False
 
 # 4. Evaluate
 python main.py eval --weights models/checkpoints/model_final.pth
