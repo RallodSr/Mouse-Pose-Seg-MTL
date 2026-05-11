@@ -36,10 +36,10 @@ from src.training.trainer import Trainer
 # ---------------------------------------------------------------------------
 
 EXPERIMENTS = [
-    {"name": "1_1",   "label": "1:1",   "seg_weight": 1, "pose_weight": 1},
-    {"name": "1_40",  "label": "1:40",  "seg_weight": 1, "pose_weight": 40},
-    {"name": "1_80",  "label": "1:80",  "seg_weight": 1, "pose_weight": 80},
-    {"name": "1_100", "label": "1:100", "seg_weight": 1, "pose_weight": 100},
+    {"name": "1_100",  "label": "1:100",   "seg_weight": 1, "pose_weight": 100},
+    {"name": "1_300",  "label": "1:300",  "seg_weight": 1, "pose_weight": 300},
+    {"name": "1_500",  "label": "1:500",  "seg_weight": 1, "pose_weight": 500},
+    {"name": "1_1000", "label": "1:1000", "seg_weight": 1, "pose_weight": 1000},
 ]
 
 RESULTS_JSON = Path("models/experiment_results.json")

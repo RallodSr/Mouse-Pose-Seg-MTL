@@ -18,6 +18,40 @@
 
 ---
 
+## หลักการและแนวคิด (Methodology Rationale)
+
+### ทำไมต้องเป็น Markerless
+
+ระบบติดตามหนูทดลองแบบดั้งเดิม เช่น ANY-maze และ EthoVision ใช้ color-based tracking หรือ blob detection แบบ rule-based ซึ่งต้องติด physical marker บนตัวสัตว์หรือตั้งค่า threshold เอง วิธีเหล่านี้มีข้อจำกัดคือ ล้มเหลวง่ายเมื่อสภาพแสงเปลี่ยนหรือหนูหลายตัวซ้อนกัน และการติด marker อาจส่งผลต่อพฤติกรรมของสัตว์ทดลอง งานนี้ใช้ deep learning predict ตำแหน่ง keypoint จากภาพดิบโดยไม่ต้องแตะตัวหนู (markerless)
+
+### ทำไมต้องเป็น Gaussian Heatmap
+
+วิธีก่อนหน้าในยุค deep learning คือ **Direct Coordinate Regression** — ให้ CNN output ค่า (x, y) coordinates โดยตรง วิธีนี้มีปัญหาคือ loss landscape sharp ทำให้ gradient กระโดดไม่เสถียรระหว่างการเทรน และไม่สามารถ encode ความไม่แน่นอนของตำแหน่งได้
+
+Newell et al. (Stacked Hourglass Networks, ECCV 2016) เสนอการแทน coordinate ด้วย **2D Gaussian probability map** (heatmap) แทน ซึ่งให้ gradient เรียบกว่า เทรนเสถียรกว่า และสามารถแสดงความไม่แน่นอนของตำแหน่งได้ผ่านการกระจายตัวของ Gaussian Mathis et al. (DeepLabCut, Nature Neuroscience 2018) นำแนวคิดนี้มาประยุกต์ใช้กับ lab animal โดยเฉพาะ
+
+ในงานนี้ heatmap ถูกใช้ใน 3 ขั้นตอน:
+1. **Dataset** (`src/data/dataset.py`) — แปลง annotation coordinates → Gaussian heatmap เป็น training target
+2. **Training** (`src/training/trainer.py`) — MSELoss ระหว่าง predicted heatmap กับ GT heatmap
+3. **Evaluation** (`src/evaluation/metrics.py`) — หา argmax ของ predicted heatmap เป็นตำแหน่ง keypoint แล้ววัด pixel distance กับ GT
+
+### ทำไมเลือก 3 Keypoints (Nose, Shoulder, Tail)
+
+สามจุดนี้เพียงพอสำหรับการวิเคราะห์พฤติกรรมหลักของหนูทดลอง:
+- **Nose** — ทิศทางที่หนูหันหน้า (heading direction)
+- **Shoulder** — ตำแหน่งกลางลำตัว (body position)
+- **Tail** — orientation ของลำตัว (body axis)
+
+ครบพอให้วิเคราะห์ locomotion, turning, freezing behavior โดยไม่ต้อง annotate จุดที่มองเห็นยากอย่างหูหรือขา ซึ่งเพิ่ม annotation error มากกว่าจะเพิ่ม information ที่เป็นประโยชน์
+
+### ทำไมใช้ PCK แทน mAP (OKS)
+
+งานนี้ใช้ **PCK (Percentage of Correct Keypoints)** ตาม Yang & Ramanan (CVPR 2013) โดยกำหนด threshold ที่ 5% ของขนาดภาพ (12.8 px ที่ resolution 256×256) ซึ่งสอดคล้องกับแนวทางในงาน lab animal pose estimation (Mathis et al., 2018)
+
+แม้ DeepLabCut 3.0 จะเปลี่ยนไปใช้ OKS-based mAP (COCO standard) แต่ OKS ต้องการ per-instance predictions และ per-keypoint sigma ที่ estimate จาก dataset ขนาดใหญ่ ซึ่งไม่เหมาะกับขนาด dataset และ architecture ของงานนี้ที่ใช้ combined heatmap representation
+
+---
+
 ## โครงสร้างโปรเจกต์
 
 ```
@@ -211,16 +245,10 @@ models/checkpoints/
 
 ```bash
 # YOLO-Pose
-yolo pose train \
-  data=data/yolo_pose/dataset.yaml \
-  model=yolo26m-pose.pt \
-  epochs=100 imgsz=256 amp=False
+yolo pose train data=data/yolo_pose/dataset.yaml model=yolo26m-pose.pt epochs=100 imgsz=256 amp=False
 
 # YOLO-Seg
-yolo segment train \
-  data=data/yolo_seg/dataset_seg.yaml \
-  model=yolo26m-seg.pt \
-  epochs=100 imgsz=256 amp=False
+yolo segment train data=data/yolo_seg/dataset_seg.yaml model=yolo26m-seg.pt epochs=100 imgsz=256 amp=False
 ```
 
 Weights จะอยู่ที่ `runs/pose/train/weights/best.pt` และ `runs/segment/train/weights/best.pt`
