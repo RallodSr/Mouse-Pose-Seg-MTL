@@ -1,5 +1,6 @@
 import csv
 import json
+import random
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +13,23 @@ from torch.utils.data import DataLoader
 from src.data.dataset import MouseMTLDataset
 from src.evaluation.metrics import calculate_miou, calculate_pck
 from src.models.mtl_net import HybridMTLNet
+
+
+def set_seed(seed: int) -> None:
+    """Seed all RNGs for reproducible training (advisor can reproduce numbers)."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
+def _worker_init(worker_id: int) -> None:
+    """Seed each DataLoader worker so augmentation is reproducible."""
+    seed = (torch.initial_seed() + worker_id) % 2**32
+    np.random.seed(seed)
+    random.seed(seed)
 
 # CSV columns (order matters — header written once at start)
 _LOG_FIELDS = [
@@ -95,6 +113,44 @@ def _match_instances(
     return matched_masks, matched_hms
 
 
+def _match_instances_by_pose(
+    pred_pose: torch.Tensor,
+    gt_masks:  torch.Tensor,
+    gt_hms:    torch.Tensor,
+    n_kp:      int,
+) -> tuple:
+    """Hungarian matching using heatmap similarity instead of mask IoU.
+
+    Needed for the pose-only ablation, where the segmentation head is not
+    trained (seg masks are random) and therefore cannot drive instance
+    assignment. Cost is MSE between predicted and GT heatmap groups.
+    """
+    B = pred_pose.shape[0]
+    N = pred_pose.shape[1] // n_kp
+    pred_np = pred_pose.detach().cpu().numpy().astype(np.float32)
+    gt_np   = gt_hms.detach().cpu().numpy().astype(np.float32)
+
+    matched_masks = gt_masks.clone()
+    matched_hms   = gt_hms.clone()
+
+    for b in range(B):
+        cost = np.zeros((N, N), dtype=np.float32)
+        for i in range(N):
+            pred_i = pred_np[b, i * n_kp:(i + 1) * n_kp]
+            for j in range(N):
+                gt_j = gt_np[b, j * n_kp:(j + 1) * n_kp]
+                cost[i, j] = float(((pred_i - gt_j) ** 2).mean())
+
+        _, col_ind = linear_sum_assignment(cost)
+        matched_masks[b] = gt_masks[b][col_ind]
+        matched_hms[b]   = torch.cat([
+            gt_hms[b, col_ind[i] * n_kp:(col_ind[i] + 1) * n_kp]
+            for i in range(N)
+        ])
+
+    return matched_masks, matched_hms
+
+
 class Trainer:
     def __init__(self, data_cfg, model_cfg, train_cfg):
         self.dcfg = data_cfg
@@ -104,12 +160,21 @@ class Trainer:
         self.out_dir = Path(train_cfg.output_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self.n_kp = model_cfg.num_keypoints // model_cfg.num_instances  # kp per instance
+        self.task = getattr(train_cfg, "task", "joint")  # joint | seg | pose
+
+    def _match(self, pred_seg, pred_pose, masks, hms):
+        """Pick instance matching by task: pose-only matches on heatmaps
+        (seg head untrained), otherwise on mask IoU."""
+        if self.task == "pose":
+            return _match_instances_by_pose(pred_pose, masks, hms, self.n_kp)
+        return _match_instances(pred_seg, masks, hms, self.n_kp)
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
     def run(self):
+        set_seed(getattr(self.tcfg, "seed", 42))
         train_dl, val_dl = self._build_loaders()
         model = HybridMTLNet(self.mcfg.num_instances, self.mcfg.num_keypoints).to(self.device)
         optimizer = optim.Adam(model.parameters(), lr=self.tcfg.lr)
@@ -123,7 +188,8 @@ class Trainer:
             "val_total_loss", "val_loss_seg", "val_loss_pose", "val_miou", "val_pck",
         ]}
 
-        best_val_pck = 0.0
+        best_val_metric = 0.0
+        sel_key = "miou" if self.task == "seg" else "pck"  # seg-only selects on mIoU
         log_path = self._init_log()
 
         print(
@@ -158,10 +224,10 @@ class Trainer:
             self._append_log(log_path, epoch + 1, lr, train_m, val_m)
 
             # ── checkpoint ────────────────────────────────────────────────
-            if val_m["pck"] > best_val_pck:
-                best_val_pck = val_m["pck"]
+            if val_m[sel_key] > best_val_metric:
+                best_val_metric = val_m[sel_key]
                 torch.save(model.state_dict(), self.out_dir / "model_best.pth")
-                print(f"  → Best saved  (Val PCK: {best_val_pck:.4f})")
+                print(f"  → Best saved  (Val {sel_key.upper()}: {best_val_metric:.4f})")
 
             if (epoch + 1) % self.tcfg.checkpoint_interval == 0:
                 torch.save(model.state_dict(), self.out_dir / f"checkpoint_epoch_{epoch+1:03d}.pth")
@@ -185,7 +251,7 @@ class Trainer:
             optimizer.zero_grad()
             pred_seg, pred_pose = model(imgs)
 
-            masks_m, hms_m = _match_instances(pred_seg, masks, hms, self.n_kp)
+            masks_m, hms_m = self._match(pred_seg, pred_pose, masks, hms)
 
             l_seg  = crit_seg(pred_seg, masks_m) + _dice_loss(pred_seg, masks_m)
             l_pose = crit_pose(pred_pose, hms_m)
@@ -213,7 +279,7 @@ class Trainer:
 
                 pred_seg, pred_pose = model(imgs)
 
-                masks_m, hms_m = _match_instances(pred_seg, masks, hms, self.n_kp)
+                masks_m, hms_m = self._match(pred_seg, pred_pose, masks, hms)
 
                 l_seg  = crit_seg(pred_seg, masks_m) + _dice_loss(pred_seg, masks_m)
                 l_pose = crit_pose(pred_pose, hms_m)
@@ -265,11 +331,15 @@ class Trainer:
         with open(self.dcfg.json_path) as f:
             data = json.load(f)
 
+        gen = torch.Generator()
+        gen.manual_seed(getattr(self.tcfg, "seed", 42))
+
         def make_loader(split_key: str, shuffle: bool):
             ds = MouseMTLDataset(data[split_key], self.dcfg.target_size, self.dcfg.sigma,
                                  augment=(split_key == "train"))
             return DataLoader(ds, batch_size=self.tcfg.batch_size, shuffle=shuffle,
-                              num_workers=self.tcfg.num_workers, pin_memory=True)
+                              num_workers=self.tcfg.num_workers, pin_memory=True,
+                              worker_init_fn=_worker_init, generator=gen)
 
         return make_loader("train", shuffle=True), \
                make_loader("val",   shuffle=False) if "val" in data else None

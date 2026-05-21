@@ -20,12 +20,7 @@ env/
 *.pth
 *.onnx
 
-# YOLO datasets (generated — not source of truth)
-data/yolo_pose/
-data/yolo_seg/
-
 # Training artifacts
-runs/
 *.yaml.bak
 
 # Jupyter

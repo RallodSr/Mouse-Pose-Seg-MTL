@@ -24,6 +24,8 @@ class TrainConfig:
     batch_size: int = 16
     epochs: int = 100
     lr: float = 1e-4
+    seed: int = 42        # fix all RNGs for reproducible training
+    task: str = "joint"   # "joint" | "seg" | "pose" — controls loss + instance matching
     loss_seg_weight: float = 1
     loss_pose_weight: float = 400
     pck_threshold: float = 0.05

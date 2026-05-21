@@ -1,21 +1,15 @@
 """
 Dataset preparation utilities:
-  - prepare_dataset   : convert Label Studio export → dataset.json
-  - convert_yolo_pose : dataset.json → YOLO pose format
-  - convert_yolo_seg  : dataset.json → YOLO seg format
+  - prepare_dataset : convert Label Studio export → dataset.json
 """
 import json
 import os
 import re
-import shutil
 
 import cv2
-import numpy as np
 from sklearn.model_selection import train_test_split
-from tqdm import tqdm
 
 STANDARD_BODY_PARTS = ["nose", "shoulder", "tail"]
-CLASS_ID = 0
 
 
 # ---------------------------------------------------------------------------
@@ -119,137 +113,3 @@ def prepare_dataset(
 
     print(f"Dataset saved to {output_json}")
     print(f"Split → Train: {len(train_items)} | Val: {len(val_items)} | Test: {len(test_items)}")
-
-
-# ---------------------------------------------------------------------------
-# 2. dataset.json → YOLO Pose format
-# ---------------------------------------------------------------------------
-
-def convert_yolo_pose(
-    json_path: str = "data/dataset.json",
-    output_dir: str = "data/yolo_pose",
-) -> None:
-    print("Converting to YOLO Pose format...")
-    for split in ["train", "val", "test"]:
-        os.makedirs(os.path.join(output_dir, "images", split), exist_ok=True)
-        os.makedirs(os.path.join(output_dir, "labels", split), exist_ok=True)
-
-    with open(json_path) as f:
-        data = json.load(f)
-
-    for split_name, items in data.items():
-        if split_name not in ["train", "val", "test"]:
-            continue
-        print(f"  [{split_name}]")
-        for item in tqdm(items):
-            img_path = item["image_path"]
-            if not os.path.exists(img_path):
-                continue
-            img = cv2.imread(img_path)
-            if img is None:
-                continue
-            img_h, img_w = img.shape[:2]
-
-            base_name = os.path.basename(img_path)
-            shutil.copy(img_path, os.path.join(output_dir, "images", split_name, base_name))
-
-            lines = []
-            for idx, kps in enumerate(item.get("all_keypoints", [])):
-                masks = item.get("mask_paths", [])
-                if idx < len(masks) and os.path.exists(masks[idx]):
-                    mask_img = cv2.imread(masks[idx], cv2.IMREAD_GRAYSCALE)
-                    x, y, w, h = cv2.boundingRect(mask_img)
-                else:
-                    arr = np.array(kps)
-                    pad = 20
-                    x, y = max(0, arr[:, 0].min() - pad), max(0, arr[:, 1].min() - pad)
-                    w = min(img_w - x, arr[:, 0].ptp() + pad * 2)
-                    h = min(img_h - y, arr[:, 1].ptp() + pad * 2)
-
-                if w == 0 or h == 0:
-                    continue
-
-                cx = (x + w / 2) / img_w
-                cy = (y + h / 2) / img_h
-                nw, nh = w / img_w, h / img_h
-                row = [CLASS_ID, cx, cy, nw, nh]
-                for kp in kps:
-                    kx, ky = kp[0], kp[1]
-                    if kx <= 0 or ky <= 0:
-                        row.extend([0.0, 0.0, 0])
-                    else:
-                        row.extend([kx / img_w, ky / img_h, 2])
-                lines.append(" ".join(f"{v:.6f}" if isinstance(v, float) else str(v) for v in row))
-
-            txt_name = os.path.splitext(base_name)[0] + ".txt"
-            with open(os.path.join(output_dir, "labels", split_name, txt_name), "w") as f:
-                f.write("\n".join(lines))
-
-    yaml_path = os.path.join(output_dir, "dataset.yaml")
-    with open(yaml_path, "w") as f:
-        f.write(
-            f"path: {os.path.abspath(output_dir)}\n"
-            "train: images/train\nval: images/val\n\n"
-            "names:\n  0: mouse\n\nkpt_shape: [3, 3]\n"
-        )
-    print(f"YOLO Pose dataset ready at {output_dir}")
-
-
-# ---------------------------------------------------------------------------
-# 3. dataset.json → YOLO Seg format
-# ---------------------------------------------------------------------------
-
-def convert_yolo_seg(
-    json_path: str = "data/dataset.json",
-    output_dir: str = "data/yolo_seg",
-) -> None:
-    print("Converting to YOLO Seg format...")
-    for split in ["train", "val", "test"]:
-        os.makedirs(os.path.join(output_dir, "images", split), exist_ok=True)
-        os.makedirs(os.path.join(output_dir, "labels", split), exist_ok=True)
-
-    with open(json_path) as f:
-        data = json.load(f)
-
-    for split_name, items in data.items():
-        if split_name not in ["train", "val", "test"]:
-            continue
-        print(f"  [{split_name}]")
-        for item in tqdm(items):
-            img_path = item["image_path"]
-            if not os.path.exists(img_path):
-                continue
-            img = cv2.imread(img_path)
-            if img is None:
-                continue
-            img_h, img_w = img.shape[:2]
-
-            base_name = os.path.basename(img_path)
-            shutil.copy(img_path, os.path.join(output_dir, "images", split_name, base_name))
-
-            lines = []
-            for mask_path in item.get("mask_paths", []):
-                if not os.path.exists(mask_path):
-                    continue
-                mask_img = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-                _, thresh = cv2.threshold(mask_img, 127, 255, cv2.THRESH_BINARY)
-                contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                for contour in contours:
-                    if cv2.contourArea(contour) < 50:
-                        continue
-                    pts = contour.flatten().tolist()
-                    poly = [pts[i] / img_w if i % 2 == 0 else pts[i] / img_h for i in range(len(pts))]
-                    lines.append(f"{CLASS_ID} " + " ".join(f"{v:.6f}" for v in poly))
-
-            txt_name = os.path.splitext(base_name)[0] + ".txt"
-            with open(os.path.join(output_dir, "labels", split_name, txt_name), "w") as f:
-                f.write("\n".join(lines))
-
-    yaml_path = os.path.join(output_dir, "dataset_seg.yaml")
-    with open(yaml_path, "w") as f:
-        f.write(
-            f"path: {os.path.abspath(output_dir)}\n"
-            "train: images/train\nval: images/val\n\n"
-            "names:\n  0: mouse\n"
-        )
-    print(f"YOLO Seg dataset ready at {output_dir}")

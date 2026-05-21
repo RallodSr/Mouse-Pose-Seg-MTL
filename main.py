@@ -1,29 +1,28 @@
 """
 Mouse Pose & Segmentation — Multi-Task Learning
 ================================================
-CLI entry point for all major operations.
+Single CLI entry point for the MTL model.
 
 Commands
 --------
-  prepare     Convert Label Studio export → dataset.json
-  convert     Convert dataset.json → YOLO format (pose / seg)
-  train       Train the MTL model (supports custom weight ratios)
-  eval        Evaluate MTL model on test set
-  eval-yolo   Evaluate YOLO baseline models
+  prepare      Convert Label Studio export → dataset.json
+  train        Train HybridMTLNet (supports custom weight ratios)
+  eval         Evaluate a trained checkpoint on the test set
+  experiment   Run a train-and-compare study (weight-ratio | single-task)
 
 Examples
 --------
   python main.py prepare
-  python main.py convert --task pose
   python main.py train
   python main.py train --seg-weight 1 --pose-weight 40 --run-name baseline_1_40
   python main.py eval --weights models/checkpoints/model_final.pth
-  python run_experiments.py            # รันทุก weight config แล้วเปรียบเทียบ
-  python run_experiments.py --eval-only
+  python main.py experiment --type single-task
+  python main.py experiment --type weight-ratio --eval-only
+
+Baselines (separate, in baselines/): maskrcnn.py, yolo/
 """
 import argparse
-import json
-import sys
+import copy
 
 from config import DATA_CFG, MODEL_CFG, TRAIN_CFG
 
@@ -38,19 +37,7 @@ def cmd_prepare(args):
     )
 
 
-def cmd_convert(args):
-    from src.data.prepare import convert_yolo_pose, convert_yolo_seg
-    if args.task == "pose":
-        convert_yolo_pose(DATA_CFG.json_path)
-    elif args.task == "seg":
-        convert_yolo_seg(DATA_CFG.json_path)
-    else:
-        print("--task must be 'pose' or 'seg'")
-        sys.exit(1)
-
-
 def cmd_train(args):
-    import copy
     from src.training.trainer import Trainer
 
     cfg = copy.copy(TRAIN_CFG)
@@ -66,51 +53,31 @@ def cmd_train(args):
 
 
 def cmd_eval(args):
-    import torch
-    from torch.utils.data import DataLoader
-    from src.data.dataset import MouseMTLDataset
-    from src.models.mtl_net import HybridMTLNet
-    from src.evaluation.metrics import calculate_miou, calculate_pck
+    from src.evaluation.evaluator import Evaluator
 
-    device = torch.device(TRAIN_CFG.device)
-    with open(DATA_CFG.json_path) as f:
-        data = json.load(f)
-
-    test_ds = MouseMTLDataset(data["test"], DATA_CFG.target_size, DATA_CFG.sigma)
-    test_dl = DataLoader(test_ds, batch_size=TRAIN_CFG.batch_size, shuffle=False,
-                         num_workers=TRAIN_CFG.num_workers)
-
-    model = HybridMTLNet(MODEL_CFG.num_instances, MODEL_CFG.num_keypoints).to(device)
-    model.load_state_dict(torch.load(args.weights, map_location=device))
-    model.eval()
-
-    from src.training.trainer import _match_instances
-    n_kp = MODEL_CFG.num_keypoints // MODEL_CFG.num_instances
-
-    total_miou = total_pck = 0.0
-    with torch.no_grad():
-        for imgs, masks, hms in test_dl:
-            imgs, masks, hms = imgs.to(device), masks.to(device), hms.to(device)
-            pred_seg, pred_pose = model(imgs)
-            masks_m, hms_m = _match_instances(pred_seg, masks, hms, n_kp)
-            total_miou += calculate_miou(pred_seg, masks_m)
-            total_pck  += calculate_pck(pred_pose, hms_m, TRAIN_CFG.pck_threshold)
-
-    n = len(test_dl)
-    print(f"Test mIoU : {total_miou/n:.4f}")
-    print(f"Test PCK  : {total_pck/n:.4f}")
+    miou, pck = Evaluator(DATA_CFG, MODEL_CFG, TRAIN_CFG).evaluate(args.weights, task=args.task)
+    print(f"Test mIoU : {miou:.4f}")
+    print(f"Test PCK  : {pck:.4f}")
 
 
-def cmd_eval_yolo(args):
-    if args.task == "seg":
-        from src.evaluation.yolo import evaluate_yolo_miou
-        evaluate_yolo_miou(DATA_CFG.json_path, args.weights, DATA_CFG.target_size)
-    elif args.task == "pose":
-        from src.evaluation.yolo import evaluate_yolo_pck
-        evaluate_yolo_pck(DATA_CFG.json_path, args.weights, DATA_CFG.target_size, TRAIN_CFG.pck_threshold)
+def cmd_benchmark(args):
+    from src.evaluation.benchmark import Benchmark
+    Benchmark(MODEL_CFG, TRAIN_CFG, input_size=DATA_CFG.target_size, runs=args.runs).run()
+
+
+def cmd_experiment(args):
+    from src.experiments import WeightRatioExperiment, SingleTaskAblation
+
+    cls = {"weight-ratio": WeightRatioExperiment, "single-task": SingleTaskAblation}[args.type]
+    exp = cls(DATA_CFG, MODEL_CFG, TRAIN_CFG)
+
+    results = exp.eval_only() if args.eval_only else exp.run_all()
+    if results:
+        exp.print_table(results)
+        if not args.no_plot and hasattr(exp, "plot"):
+            exp.plot(results)
     else:
-        print("--task must be 'pose' or 'seg'")
-        sys.exit(1)
+        print("No results to display.")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -118,9 +85,6 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("prepare", help="Label Studio JSON → dataset.json")
-
-    p_conv = sub.add_parser("convert", help="dataset.json → YOLO format")
-    p_conv.add_argument("--task", choices=["pose", "seg"], required=True)
 
     p_train = sub.add_parser("train", help="Train MTL model")
     p_train.add_argument("--seg-weight",  type=float, default=None,
@@ -132,10 +96,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_eval = sub.add_parser("eval", help="Evaluate MTL on test set")
     p_eval.add_argument("--weights", default=f"{TRAIN_CFG.output_dir}/model_final.pth")
+    p_eval.add_argument("--task", choices=["joint", "seg", "pose"], default="joint",
+                        help="Instance-matching mode (pose = heatmap-based)")
 
-    p_yolo = sub.add_parser("eval-yolo", help="Evaluate YOLO baseline")
-    p_yolo.add_argument("--task", choices=["pose", "seg"], required=True)
-    p_yolo.add_argument("--weights", required=True)
+    p_exp = sub.add_parser("experiment", help="Run a train-and-compare study")
+    p_exp.add_argument("--type", choices=["weight-ratio", "single-task"], required=True)
+    p_exp.add_argument("--eval-only", action="store_true",
+                       help="Skip training — only evaluate saved checkpoints")
+    p_exp.add_argument("--no-plot", action="store_true", help="Skip chart generation")
+
+    p_bench = sub.add_parser("benchmark", help="Measure params/FLOPs/latency (efficiency)")
+    p_bench.add_argument("--runs", type=int, default=100, help="Timed iterations")
 
     return parser
 
@@ -143,10 +114,10 @@ def build_parser() -> argparse.ArgumentParser:
 if __name__ == "__main__":
     args = build_parser().parse_args()
     dispatch = {
-        "prepare":     cmd_prepare,
-        "convert":     cmd_convert,
-        "train":       cmd_train,
-        "eval":        cmd_eval,
-        "eval-yolo":   cmd_eval_yolo,
+        "prepare":    cmd_prepare,
+        "train":      cmd_train,
+        "eval":       cmd_eval,
+        "experiment": cmd_experiment,
+        "benchmark":  cmd_benchmark,
     }
     dispatch[args.command](args)

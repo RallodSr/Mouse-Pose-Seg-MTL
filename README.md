@@ -1,6 +1,8 @@
 # Mouse Pose & Segmentation — Hybrid Multi-Task Learning
 
-วิทยานิพนธ์: การนำ Multi-Task Learning มาใช้สำหรับ Instance Segmentation และ Keypoint Estimation บนภาพหนูทดลองในห้องปฏิบัติการ พร้อมเปรียบเทียบกับ YOLO baseline
+วิทยานิพนธ์: การนำ Multi-Task Learning มาใช้สำหรับ Instance Segmentation และ Keypoint Estimation บนภาพหนูทดลองในห้องปฏิบัติการ ด้วยโมเดลเดียว (single shared encoder)
+
+> หมายเหตุ: การเปรียบเทียบกับ baseline ภายนอก (YOLO, DeepLabCut, SLEAP) อยู่ในส่วน paper เท่านั้น โปรเจกต์นี้เก็บเฉพาะส่วน MTL (HybridMTLNet)
 
 ---
 
@@ -8,9 +10,7 @@
 
 | โมเดล | Architecture | Task | Metric |
 |---|---|---|---|
-| **HybridMTLNet** (ตัวหลัก) | ResNet-34 + U-Net decoder + Deconv head | Segmentation + Pose พร้อมกัน | mIoU + PCK |
-| YOLO-Seg baseline | YOLO26m-seg | Instance Segmentation เท่านั้น | mIoU |
-| YOLO-Pose baseline | YOLO26m-pose | Keypoint เท่านั้น | PCK |
+| **HybridMTLNet** | ResNet-34 + U-Net decoder + Deconv head | Segmentation + Pose พร้อมกัน | mIoU + PCK |
 
 **HybridMTLNet** ใช้ ResNet-34 เป็น shared encoder โดย segmentation decoder เป็น U-Net (2 channels = 2 instance masks) และ pose head เป็น deconvolutional head (6 channels = 3 keypoints × 2 ตัว) การ assign instance ใช้ **Hungarian matching** บน mask IoU ทำให้ไม่ต้องเรียนรู้ลำดับ instance ที่ตายตัว
 
@@ -18,12 +18,12 @@
 
 ## ผลการทดลอง
 
-| Model | mIoU | PCK@0.05 |
-|---|---|---|
-| YOLO26m-Seg | 0.5451 | — |
-| YOLO26m-Pose | — | 0.8872 |
-| **HybridMTLNet (Ours)** | **0.8113** | **0.9621** |
-| Δ vs. YOLO baseline | +0.2662 | +0.0749 |
+| Metric | Score |
+|---|---|
+| mIoU | **0.8113** |
+| PCK@0.05 | **0.9621** |
+
+ผลเปรียบเทียบกับ baseline ภายนอกดูได้ใน `paper/main.tex`
 
 ---
 
@@ -42,31 +42,37 @@ Mouse-Pose-Seg-MTL/
 │   ├── checkpoints/               ← ผลจากการ train MTL
 │   └── inference_output/          ← ผลจาก inference
 │
-├── src/
+├── src/                           ← MTL model (OOP)
 │   ├── data/
 │   │   ├── dataset.py             ← MouseMTLDataset (PyTorch Dataset)
-│   │   └── prepare.py             ← prepare_dataset, convert_yolo_pose/seg
+│   │   └── prepare.py             ← prepare_dataset (Label Studio → dataset.json)
 │   ├── models/
 │   │   └── mtl_net.py             ← HybridMTLNet architecture
 │   ├── training/
 │   │   └── trainer.py             ← Trainer class (train loop, plotting)
-│   └── evaluation/
-│       ├── metrics.py             ← calculate_miou, calculate_pck
-│       └── yolo.py                ← evaluate_yolo_miou, evaluate_yolo_pck
+│   ├── evaluation/
+│   │   ├── metrics.py             ← calculate_miou, calculate_pck
+│   │   ├── evaluator.py           ← Evaluator class (unified test eval)
+│   │   └── benchmark.py           ← Benchmark class (params/FLOPs/FPS)
+│   └── experiments/               ← train-and-compare studies (OOP)
+│       ├── base.py                ← Experiment (base class)
+│       ├── weight_ratio.py        ← WeightRatioExperiment
+│       └── single_task.py         ← SingleTaskAblation
+│
+├── baselines/                     ← baseline models (แยกจาก MTL)
+│   ├── maskrcnn.py                ← Mask R-CNN seg baseline
+│   └── yolo/                      ← YOLO eval + inference scripts
 │
 ├── app/                           ← inference scripts
 │   ├── infer_images.py            ← MTL inference บนโฟลเดอร์รูป
-│   ├── infer_mtl_video.py         ← MTL inference บนวิดีโอ
-│   ├── infer_yolo_pose_video.py   ← YOLO-Pose inference บนวิดีโอ
-│   └── infer_yolo_seg_video.py    ← YOLO-Seg inference บนวิดีโอ
+│   └── infer_mtl_video.py         ← MTL inference บนวิดีโอ
 │
 ├── paper/
 │   ├── main.tex                   ← IEEE conference paper (LaTeX)
 │   └── references.bib
 │
 ├── config.py                      ← hyperparameters และ paths ทั้งหมด
-├── main.py                        ← CLI entry point
-├── run_experiments.py             ← รัน ablation study (loss weight ratio)
+├── main.py                        ← CLI entry point (prepare/train/eval/experiment)
 ├── requirements.txt
 └── .gitignore
 ```
@@ -119,17 +125,11 @@ data/
 ```bash
 # แปลง Label Studio export → dataset.json (แบ่ง 80/10/10)
 python main.py prepare
-
-# แปลงสำหรับ YOLO baseline
-python main.py convert --task pose   # → data/yolo_pose/
-python main.py convert --task seg    # → data/yolo_seg/
 ```
 
 ---
 
 ## การ Train โมเดล
-
-### MTL Model (HybridMTLNet)
 
 ```bash
 # Train ด้วย config ใน config.py
@@ -150,43 +150,47 @@ lr: float = 1e-4
 
 > **หมายเหตุ:** MSE heatmap loss มีขนาดเล็กกว่า BCE+Dice ประมาณ 500× โดยธรรมชาติ ต้องตั้ง `loss_pose_weight` สูงพอเพื่อให้ pose head เรียนรู้ได้
 
-### Ablation Study (Loss Weight Ratio)
+### Ablation Study
 
 ```bash
-python run_experiments.py           # รัน 4 configs แล้วเปรียบเทียบอัตโนมัติ
-python run_experiments.py --eval-only  # ประเมินจาก checkpoint ที่มีอยู่
+# Loss weight ratio ablation
+python main.py experiment --type weight-ratio              # รัน configs แล้วเปรียบเทียบ
+python main.py experiment --type weight-ratio --eval-only
+
+# Single-task vs joint MTL ablation
+python main.py experiment --type single-task               # train seg-only / pose-only / joint
+python main.py experiment --type single-task --eval-only
 ```
 
-| Config | pose_weight | Output dir |
-|---|---|---|
-| 1:1 | 1 | `models/checkpoints/1_1/` |
-| 1:100 | 100 | `models/checkpoints/1_100/` |
-| **1:400 (ใช้จริง)** | **400** | **`models/checkpoints/1_400/`** |
-| 1:800 | 800 | `models/checkpoints/1_800/` |
+single-task ablation เทรน **architecture เดียวกัน** 3 แบบ:
 
-### YOLO Baseline
+| Config | seg_weight | pose_weight | Metric ที่วัด |
+|---|---|---|---|
+| Seg-only | 1 | 0 | mIoU |
+| Pose-only | 0 | 400 | PCK |
+| Joint MTL | 1 | 400 | mIoU + PCK |
 
-```bash
-yolo pose train data=data/yolo_pose/dataset.yaml model=yolo26m-pose.pt epochs=100 imgsz=256 amp=False
-yolo segment train data=data/yolo_seg/dataset_seg.yaml model=yolo26m-seg.pt epochs=100 imgsz=256 amp=False
-```
+เพื่อแยกผลของ multi-task learning ออกจากผลของสถาปัตยกรรม (ดูผลและการอภิปรายใน `paper/main.tex`)
 
 ---
 
 ## การประเมินผล
 
 ```bash
-# MTL model
 python main.py eval --weights models/checkpoints/model_final.pth
-
-# YOLO baselines
-python main.py eval-yolo --task seg  --weights runs/segment/train/weights/best.pt
-python main.py eval-yolo --task pose --weights runs/pose/train/weights/best.pt
 ```
 
 **Metrics:**
 - **mIoU** — per-instance IoU เฉลี่ยจาก Hungarian-matched pairs
 - **PCK@0.05** — keypoint ที่ทำนายได้ภายใน 5% ของขนาดภาพ (12.8 px ที่ 256×256) ตาม Yang & Ramanan (CVPR 2013)
+
+### Efficiency Benchmark
+
+```bash
+python main.py benchmark              # params / FLOPs / FPS (GPU + CPU)
+```
+
+วัด HybridMTLNet (1 forward pass → seg+pose) เทียบกับ modular pipeline 2 โมเดล — แสดงว่า unified ใช้ params/FLOPs ครึ่งเดียวและ FPS ~2 เท่า
 
 ---
 
@@ -196,12 +200,8 @@ python main.py eval-yolo --task pose --weights runs/pose/train/weights/best.pt
 # บนโฟลเดอร์รูปภาพ
 python app/infer_images.py --input data/images --weights models/checkpoints/model_final.pth
 
-# บนวิดีโอ (MTL)
+# บนวิดีโอ
 python app/infer_mtl_video.py --input video.mp4 --weights models/checkpoints/model_final.pth --output models/inference_output/result.mp4
-
-# บนวิดีโอ (YOLO)
-python app/infer_yolo_pose_video.py --input video.mp4 --weights runs/pose/train/weights/best.pt
-python app/infer_yolo_seg_video.py  --input video.mp4 --weights runs/segment/train/weights/best.pt
 ```
 
 ---
@@ -214,18 +214,12 @@ pip install -r requirements.txt
 
 # 2. เตรียมข้อมูล
 python main.py prepare
-python main.py convert --task pose
-python main.py convert --task seg
 
 # 3. Train
 python main.py train
-yolo pose train data=data/yolo_pose/dataset.yaml model=yolo26m-pose.pt epochs=100 imgsz=256 amp=False
-yolo segment train data=data/yolo_seg/dataset_seg.yaml model=yolo26m-seg.pt epochs=100 imgsz=256 amp=False
 
 # 4. Evaluate
 python main.py eval --weights models/checkpoints/model_final.pth
-python main.py eval-yolo --task seg  --weights runs/segment/train/weights/best.pt
-python main.py eval-yolo --task pose --weights runs/pose/train/weights/best.pt
 
 # 5. Inference
 python app/infer_images.py --input data/images --weights models/checkpoints/model_final.pth
