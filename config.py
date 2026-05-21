@@ -27,7 +27,7 @@ class TrainConfig:
     seed: int = 42        # fix all RNGs for reproducible training
     task: str = "joint"   # "joint" | "seg" | "pose" — controls loss + instance matching
     loss_seg_weight: float = 1
-    loss_pose_weight: float = 400
+    loss_pose_weight: float = 500
     pck_threshold: float = 0.05
     checkpoint_interval: int = 10
     output_dir: str = "models/checkpoints"

@@ -20,10 +20,10 @@
 
 | Metric | Score |
 |---|---|
-| mIoU | **0.8113** |
-| PCK@0.05 | **0.9621** |
+| mIoU | **0.8105** |
+| PCK@0.05 | **0.9542** |
 
-ผลเปรียบเทียบกับ baseline ภายนอกดูได้ใน `paper/main.tex`
+HybridMTLNet ใช้ loss ratio seg:pose = 1:500 (seed=42) ผลเปรียบเทียบกับ baseline ภายนอกดูได้ใน `paper/main.tex`
 
 ---
 
@@ -136,14 +136,14 @@ python main.py prepare
 python main.py train
 
 # Override loss weight ratio จาก CLI
-python main.py train --pose-weight 400 --run-name my_run
+python main.py train --pose-weight 500 --run-name my_run
 ```
 
 hyperparameters หลักใน `config.py`:
 
 ```python
 loss_seg_weight: float = 1
-loss_pose_weight: float = 400   # ปรับ ratio เพื่อ balance BCE+Dice vs MSE
+loss_pose_weight: float = 500   # ปรับ ratio เพื่อ balance BCE+Dice vs MSE
 epochs: int = 100
 lr: float = 1e-4
 ```
@@ -167,8 +167,8 @@ single-task ablation เทรน **architecture เดียวกัน** 3 �
 | Config | seg_weight | pose_weight | Metric ที่วัด |
 |---|---|---|---|
 | Seg-only | 1 | 0 | mIoU |
-| Pose-only | 0 | 400 | PCK |
-| Joint MTL | 1 | 400 | mIoU + PCK |
+| Pose-only | 0 | 500 | PCK |
+| Joint MTL | 1 | 500 | mIoU + PCK |
 
 เพื่อแยกผลของ multi-task learning ออกจากผลของสถาปัตยกรรม (ดูผลและการอภิปรายใน `paper/main.tex`)
 
