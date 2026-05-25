@@ -305,7 +305,9 @@ For baselines under the same 256\(\times\)256 protocol: YOLO26m-Seg
 and YOLO26m-Pose are fine-tuned for 100 epochs from official
 pretrained weights; Mask R-CNN (ResNet-50-FPN, COCO-pretrained) is
 trained for 100 epochs with SGD; and multi-animal DeepLabCut
-(dlcrnet\_ms5) is trained for the equivalent of 100 epochs. Each
+(dlcrnet\_ms5) is trained for 10{,}000 iterations and evaluated in
+image mode without the video-based assembly stage, since our test
+data are independent still images rather than video sequences. Each
 baseline's best validation checkpoint is used for evaluation.
 
 \subsection{Evaluation Metrics}
@@ -375,12 +377,21 @@ Table~\ref{tab:results} presents results on the held-out test set.
 HybridMTLNet achieves 0.8105 mIoU and 0.9542 PCK@0.05, surpassing
 the YOLO26m-Seg baseline by \(+0.265\) mIoU (\(+48.7\%\) relative)
 and the YOLO26m-Pose baseline by \(+0.067\) PCK (\(+7.6\%\) relative).
-DeepLabCut (maDLC), trained as a dedicated pose estimator, achieves
-only 0.4098 PCK@0.05, substantially below both YOLO26m-Pose and
-HybridMTLNet. This gap arises because maDLC uses part affinity fields
-designed for full-body multi-animal tracking rather than compact
-three-keypoint topologies, and its inference resolution is mismatched
-when evaluated at 256\(\times\)256.
+DeepLabCut (maDLC) achieves 0.4098 PCK@0.05, substantially below the
+other pose baselines. Three factors specific to our evaluation
+protocol contribute to this gap. First, maDLC's multi-animal output
+relies on a separate keypoint-to-individual assembly stage that is
+designed for video tracking; our static-image evaluation uses
+\texttt{analyze\_time\_lapse\_frames}, which returns raw detections
+without the assembly step, effectively yielding one set of keypoints
+per image while ground truth contains up to two mice---this alone
+bounds the achievable PCK in two-mouse frames at \(\approx\)0.5.
+Second, we train for 10{,}000 iterations, below maDLC's commonly
+recommended training duration. Third, the model is trained at the
+dataset's native resolution and evaluated at \(256\times256\). The
+reported number therefore characterises maDLC under our static-image
+protocol rather than its peak capability in a full video-tracking
+pipeline.
 
 On segmentation, HybridMTLNet (0.8105 mIoU) also surpasses
 Mask R-CNN (0.7774 mIoU), a strong COCO-pretrained ResNet-50-FPN
