@@ -46,7 +46,9 @@ class Evaluator:
                           num_workers=self.tcfg.num_workers)
 
     def _load_model(self, weights_path: str) -> HybridMTLNet:
-        model = HybridMTLNet(self.mcfg.num_instances, self.mcfg.num_keypoints).to(self.device)
+        model = HybridMTLNet(self.mcfg.num_instances, self.mcfg.num_keypoints,
+                             mask_guided=getattr(self.tcfg, "mask_guided", False),
+                             pose_guided=getattr(self.tcfg, "pose_guided", False)).to(self.device)
         model.load_state_dict(torch.load(weights_path, map_location=self.device))
         model.eval()
         return model

@@ -1,0 +1,139 @@
+\begin{thebibliography}{10}
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\urlprefix}{URL }
+\providecommand{\doi}[1]{https://doi.org/#1}
+
+\bibitem{artacho2020unipose}
+Artacho, B., Savakis, A.: {UniPose}: Unified human pose estimation in single
+  images and videos. In: Proceedings of the IEEE/CVF Conference on Computer
+  Vision and Pattern Recognition (CVPR). pp. 7035--7044 (2020)
+
+\bibitem{caruana1997multitask}
+Caruana, R.: Multitask learning. Machine Learning  \textbf{28}(1),  41--75
+  (1997)
+
+\bibitem{he2017maskrcnn}
+He, K., Gkioxari, G., Doll{\'a}r, P., Girshick, R.: Mask {R-CNN}. In:
+  Proceedings of the IEEE International Conference on Computer Vision (ICCV).
+  pp. 2961--2969 (2017)
+
+\bibitem{he2016resnet}
+He, K., Zhang, X., Ren, S., Sun, J.: Deep residual learning for image
+  recognition. In: Proceedings of the IEEE Conference on Computer Vision and
+  Pattern Recognition (CVPR). pp. 770--778 (2016)
+
+\bibitem{jiang2025yolosp}
+Jiang, Y., Dai, Z., Chen, Y., Chu, Z.: An improved multi-task model for
+  instance segmentation and pose estimation based on {YOLOv11}. In: Advanced
+  Intelligent Computing Technology and Applications (ICIC). Lecture Notes in
+  Computer Science, Springer (2025). \doi{10.1007/978-981-96-9856-1_19}
+
+\bibitem{jocher2026yolo26}
+Jocher, G., Qiu, J., Liu, M., Lyu, S., Akyon, F.C., Kalfaoglu, M.E.:
+  Ultralytics {YOLO26}: Unified real-time end-to-end vision models. arXiv
+  preprint arXiv:2606.03748  (2026)
+
+\bibitem{kendall2018multitask}
+Kendall, A., Gal, Y., Cipolla, R.: Multi-task learning using uncertainty to
+  weigh losses for scene geometry and semantics. In: Proceedings of the IEEE
+  Conference on Computer Vision and Pattern Recognition (CVPR). pp. 7482--7491
+  (2018)
+
+\bibitem{kuhn1955hungarian}
+Kuhn, H.W.: The {Hungarian} method for the assignment problem. Naval Research
+  Logistics Quarterly  \textbf{2}(1-2),  83--97 (1955)
+
+\bibitem{liu2025mtsrnet}
+Liu, D., Parmiggiani, A., Norton, T.: {MT-SRNet}: A transferable multi-task
+  super-resolution network for pig keypoint detection, segmentation, and
+  posture estimation. Computers and Electronics in Agriculture  \textbf{237},
+  110533 (2025). \doi{10.1016/j.compag.2025.110533}
+
+\bibitem{marks2022sipec}
+Marks, M., Jin, Q., Sturman, O., von Ziegler, L., Kollmorgen, S., von~der
+  Behrens, W., Mante, V., Bohacek, J., Yanik, M.F.: Deep-learning-based
+  identification, tracking, pose estimation and behaviour classification of
+  interacting primates and mice in complex environments. Nature Machine
+  Intelligence  \textbf{4}(4),  331--340 (2022).
+  \doi{10.1038/s42256-022-00477-5}
+
+\bibitem{mathis2018deeplabcut}
+Mathis, A., Mamidanna, P., Cury, K.M., Abe, T., Murthy, V.N., Mathis, M.W.,
+  Bethge, M.: Deeplabcut: markerless pose estimation of user-defined body parts
+  with deep learning. Nature Neuroscience  \textbf{21}(9),  1281--1289 (2018)
+
+\bibitem{milletari2016vnet}
+Milletari, F., Navab, N., Ahmadi, S.A.: V-net: Fully convolutional neural
+  networks for volumetric medical image segmentation. In: International
+  Conference on 3D Vision (3DV). pp. 565--571 (2016)
+
+\bibitem{newell2016stacked}
+Newell, A., Yang, K., Deng, J.: Stacked hourglass networks for human pose
+  estimation. In: European Conference on Computer Vision (ECCV). pp. 483--499
+  (2016)
+
+\bibitem{nie2018mula}
+Nie, X., Feng, J., Yan, S.: Mutual learning to adapt for joint human parsing
+  and pose estimation. In: European Conference on Computer Vision (ECCV). pp.
+  502--517 (2018)
+
+\bibitem{pereira2022sleap}
+Pereira, T.D., Tabris, N., Matsliah, A., Turner, D.M., Li, J., Ravindranath,
+  S., Papadoyannis, E.S., Normand, E., Deutsch, D.S., Wang, Z.H., et~al.:
+  Sleap: A deep learning system for multi-animal pose tracking. Nature Methods
+  \textbf{19}(4),  486--495 (2022)
+
+\bibitem{ronneberger2015unet}
+Ronneberger, O., Fischer, P., Brox, T.: U-net: Convolutional networks for
+  biomedical image segmentation. In: International Conference on Medical Image
+  Computing and Computer-Assisted Intervention (MICCAI). pp. 234--241 (2015)
+
+\bibitem{standley2020tasks}
+Standley, T., Zamir, A., Chen, D., Guibas, L., Malik, J., Savarese, S.: Which
+  tasks should be learned together in multi-task learning? In: International
+  Conference on Machine Learning (ICML). pp. 9120--9132 (2020)
+
+\bibitem{sun2019hrnet}
+Sun, K., Xiao, B., Liu, D., Wang, J.: Deep high-resolution representation
+  learning for human pose estimation. In: Proceedings of the IEEE/CVF
+  Conference on Computer Vision and Pattern Recognition (CVPR). pp. 5693--5703
+  (2019)
+
+\bibitem{tang2024stcs}
+Tang, C., Zhou, Y., Zhao, S., et~al.: Segmentation tracking and clustering
+  system enables accurate multi-animal tracking of social behaviors. Patterns
+  \textbf{5},  101057 (2024). \doi{10.1016/j.patter.2024.101057}
+
+\bibitem{wang2020solov2}
+Wang, X., Zhang, R., Kong, T., Li, L., Shen, C.: {SOLOv2}: Dynamic and fast
+  instance segmentation. In: Advances in Neural Information Processing Systems
+  (NeurIPS) (2020)
+
+\bibitem{xu2018padnet}
+Xu, D., Ouyang, W., Wang, X., Sebe, N.: {PAD-Net}: Multi-tasks guided
+  prediction-and-distillation network for simultaneous depth estimation and
+  scene parsing. In: Proceedings of the IEEE Conference on Computer Vision and
+  Pattern Recognition (CVPR). pp. 675--684 (2018)
+
+\bibitem{yang2019parsingrcnn}
+Yang, L., Song, Q., Wang, Z., Jiang, M.: Parsing {R-CNN} for instance-level
+  human analysis. In: Proceedings of the IEEE Conference on Computer Vision and
+  Pattern Recognition (CVPR). pp. 364--373 (2019)
+
+\bibitem{yang2011pck}
+Yang, Y., Ramanan, D.: Articulated pose estimation with flexible
+  mixtures-of-parts. In: Proceedings of the IEEE Conference on Computer Vision
+  and Pattern Recognition (CVPR). pp. 1385--1392 (2011)
+
+\bibitem{yu2020pcgrad}
+Yu, T., Kumar, S., Gupta, A., Levine, S., Hausman, K., Finn, C.: Gradient
+  surgery for multi-task learning. In: Advances in Neural Information
+  Processing Systems (NeurIPS) (2020)
+
+\bibitem{zhai2025intebomb}
+Zhai, H., Yan, H.Y., Zhou, J.Y., Liu, J., Xie, Q.W., Shen, L.J., Chen, X., Han,
+  H.: {InteBOMB}: Integrating generic object tracking and segmentation with
+  pose estimation for animal behavior analysis. Zoological Research
+  \textbf{46}(2),  355--369 (2025). \doi{10.24272/j.issn.2095-8137.2024.268}
+
+\end{thebibliography}

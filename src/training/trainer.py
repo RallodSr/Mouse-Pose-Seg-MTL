@@ -1,5 +1,6 @@
 import csv
 import json
+import math
 import random
 from pathlib import Path
 
@@ -169,6 +170,15 @@ class Trainer:
             return _match_instances_by_pose(pred_pose, masks, hms, self.n_kp)
         return _match_instances(pred_seg, masks, hms, self.n_kp)
 
+    def _combine_loss(self, l_seg, l_pose):
+        """Total multi-task loss. Uncertainty weighting (Kendall 2018) when enabled,
+        otherwise the fixed seg/pose weighting."""
+        if getattr(self, "uw_seg", None) is not None:
+            loss = (torch.exp(-self.uw_seg) * l_seg + self.uw_seg
+                    + torch.exp(-self.uw_pose) * l_pose + self.uw_pose)
+            return loss.sum()
+        return self.tcfg.loss_seg_weight * l_seg + self.tcfg.loss_pose_weight * l_pose
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -176,8 +186,25 @@ class Trainer:
     def run(self):
         set_seed(getattr(self.tcfg, "seed", 42))
         train_dl, val_dl = self._build_loaders()
-        model = HybridMTLNet(self.mcfg.num_instances, self.mcfg.num_keypoints).to(self.device)
-        optimizer = optim.Adam(model.parameters(), lr=self.tcfg.lr)
+        model = HybridMTLNet(self.mcfg.num_instances, self.mcfg.num_keypoints,
+                             mask_guided=getattr(self.tcfg, "mask_guided", False),
+                             pose_guided=getattr(self.tcfg, "pose_guided", False)).to(self.device)
+
+        # Kendall et al. (2018) uncertainty weighting: learn per-task log-variance
+        # s_i = log(sigma_i^2) and use loss = sum_i exp(-s_i) L_i + s_i. Initialised
+        # so the starting effective weights match the fixed seg/pose weights (fair).
+        params = list(model.parameters())
+        if getattr(self.tcfg, "uncertainty_weighting", False):
+            self.uw_seg = torch.tensor(
+                [-math.log(max(float(self.tcfg.loss_seg_weight), 1e-8))],
+                device=self.device, requires_grad=True)
+            self.uw_pose = torch.tensor(
+                [-math.log(max(float(self.tcfg.loss_pose_weight), 1e-8))],
+                device=self.device, requires_grad=True)
+            params += [self.uw_seg, self.uw_pose]
+        else:
+            self.uw_seg = self.uw_pose = None
+        optimizer = optim.Adam(params, lr=self.tcfg.lr)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", patience=5, factor=0.5)
 
         crit_seg  = nn.BCEWithLogitsLoss()
@@ -255,7 +282,7 @@ class Trainer:
 
             l_seg  = crit_seg(pred_seg, masks_m) + _dice_loss(pred_seg, masks_m)
             l_pose = crit_pose(pred_pose, hms_m)
-            loss   = self.tcfg.loss_seg_weight * l_seg + self.tcfg.loss_pose_weight * l_pose
+            loss   = self._combine_loss(l_seg, l_pose)
 
             loss.backward()
             optimizer.step()
@@ -283,7 +310,7 @@ class Trainer:
 
                 l_seg  = crit_seg(pred_seg, masks_m) + _dice_loss(pred_seg, masks_m)
                 l_pose = crit_pose(pred_pose, hms_m)
-                loss   = self.tcfg.loss_seg_weight * l_seg + self.tcfg.loss_pose_weight * l_pose
+                loss   = self._combine_loss(l_seg, l_pose)
 
                 totals["total_loss"] += loss.item()
                 totals["loss_seg"]   += l_seg.item()

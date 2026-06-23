@@ -26,6 +26,9 @@ class TrainConfig:
     lr: float = 1e-4
     seed: int = 42        # fix all RNGs for reproducible training
     task: str = "joint"   # "joint" | "seg" | "pose" — controls loss + instance matching
+    mask_guided: bool = False  # mask-guided pose head: seg mask gates pose heatmaps
+    pose_guided: bool = False  # pose-guided seg: keypoint heatmaps prior into seg head
+    uncertainty_weighting: bool = False  # Kendall et al. 2018 learned loss weights (MTL baseline)
     loss_seg_weight: float = 1
     loss_pose_weight: float = 500
     pck_threshold: float = 0.05
