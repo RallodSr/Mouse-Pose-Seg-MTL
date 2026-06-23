@@ -176,8 +176,9 @@ reduce pages).
 
 ## 9. Status & pending work
 
-- **Abstract + Introduction + Related Work + Fig. 1 caption** — reviewed line-by-line
-  with the user and finalized. Intro reuses the advisor-approved abstract's wording.
+- **Abstract, Introduction, Related Work, Fig. 1 caption, and all of §3 Methodology**
+  — reviewed line-by-line with the user and finalized. Intro reuses the
+  advisor-approved abstract's wording.
 - **DSAI 2026 submission:** abstract registered on EasyChair (**Submission 25**).
   **Full paper PDF due ~29 June 2026.** Check whether review is double-blind (the
   current PDF shows author names; anonymize if required). Source files (`.tex/.bib/
@@ -195,26 +196,30 @@ The following edits have been applied to `paper/main.tex`:
   language, "U-Net-style" → "dense per-pixel decoder" to match abstract).
 - **§3.3 Loss Function** — full prose rewrite (fixed redundancies, moved ε=1
   definition next to equation, tightened each paragraph).
-- **§3.4 Order-Invariant Instance Matching** — sentence-by-sentence review done;
-  Gemini version obtained and reviewed. **NOT YET APPLIED.** Three fixes needed
-  before applying:
-  1. Remove all `[cite: 240]` Gemini artifacts
-  2. Fix "it from the network may place..." → "it may place..." (Gemini error)
-  3. Remove "PyTorch" → "computation graph"
-  After applying, restore `\cite{kuhn1955hungarian}` in Step 2.
-  Good things to keep from Gemini version: separate `\noindent\textbf{}` paragraphs
-  per step, `\hat{M}_i`/`M_j` notation with definition line, `\operatorname{IoU}`.
+- **§3.4 Order-Invariant Instance Matching** — DONE. Current text already has the
+  3 prior Gemini fixes (no `[cite]` artifacts, "it may place…", "computation graph"
+  not "PyTorch") plus `\cite{kuhn1955hungarian}`. This session also applied:
+  "number"→"numbers … respectively"; an explicit definition line ("$\hat{S}_i$ and
+  $S_j$ are the predicted and ground-truth instance masks"); "wider"→"larger
+  overlap"; and `\text{IoU}`→`\operatorname{IoU}`.
+- **§3.5 Data Augmentation** — DONE. Reviewed; merged a Gemini rewrite (kept "within
+  $\pm30^\circ$", "instance masks", "skeletal keypoint coordinates", "cross-task
+  consistency", "photometric"; trimmed filler; "photograph"→"image").
 - **Several minor fixes** across the paper: "L² distance" removed from §3.3,
   pose head grammar fixed in §3.2, "laboratory subjects" → "laboratory mice" in
   Conclusion.
 
 ### Open items
-- **§3.4** — apply Gemini version with 3 fixes above (next task).
-- **§3.5 Data Augmentation** — not yet reviewed.
-- **§4 Experimental Setup, §5 Results, §6 Conclusion** — not yet reviewed in
-  this round (were reviewed in a prior session; may need another pass).
-- **Compile PDF** — not done on this machine (no MiKTeX). Must verify 14 pages
-  after all edits are applied. Use original machine or Overleaf.
+- **§4 Experimental Setup, §5 Results, §6 Conclusion** — line-by-line review still
+  pending (were reviewed in a prior session; may need another pass).
 - **Baseline numbers** (Mask R-CNN 0.7854, YOLO26-Seg 0.5451, YOLO26-Pose 0.8872,
   maDLC 0.4098) need verification against baseline run logs — not reproducible
   from this repo alone (baselines trained elsewhere).
+- **DSAI submission:** upload the full paper PDF via EasyChair "Add file" (Submission
+  25, due ~29 June 2026); confirm whether review is double-blind before uploading.
+- **Advisor approval** (Praisan Padungweang, co-author) required before submission.
+- **Terminology RESOLVED this session:** "behavioral tests" now used everywhere
+  (fixed the last "behavioral paradigms" in §5 prose + Fig. 2 caption). The two
+  remaining "paradigm" uses in §2 mean *methodological approach* and are correct.
+- Note: this machine (`C:/Users/usEr/...`) HAS MiKTeX and compiles fine — every edit
+  this session verified at 14 pages. (The `C:/Users/Thana` machine has no MiKTeX.)
