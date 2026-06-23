@@ -60,7 +60,7 @@ code/data; no fabrication; baselines must be fair.
   (`scipy.optimize.linear_sum_assignment`), reorder GT to match output channels,
   then compute loss. The assignment is **detached / non-differentiable** (gradients
   flow through the loss, not the matching).
-- **Data:** 3,710 manually annotated images, 8 mouse behavioral paradigms; 64.4%
+- **Data:** 3,710 manually annotated images, 8 mouse behavioral tests; 64.4%
   single-mouse, 35.6% two-mouse; split train 2,968 / val 371 / test 371 (80/10/10);
   mixed source resolution → all train/eval at 256×256.
 - **Augmentation (train only):** h/v flip, rotation ±30°, color jitter, p=0.5.
@@ -162,6 +162,15 @@ reduce pages).
 - Keep edits small and surgical; recompile and re-check page count each time.
 - LNCS `\orcidID{...}` renders the iD as a superscript `[number]` — that is correct
   template behaviour, not a bug.
+- **Always respond in Thai.** User requested this on 2026-06-23.
+- **Gemini-assisted workflow:** user sometimes pastes a Gemini-rewritten paragraph
+  and asks for review. Always check for: (1) Gemini citation artifacts like `[cite: N]`
+  — remove all of them; (2) hallucinated or garbled phrases; (3) implementation-specific
+  terms that should stay framework-agnostic (e.g. "PyTorch computation graph" → just
+  "computation graph"); (4) missing real LaTeX citations that must be restored.
+- **MiKTeX not installed** on `C:/Users/Thana` machine. Compile at original machine
+  (`C:/Users/usEr/...`) or via Overleaf. All text-only edits in this session have not
+  been verified for page count — **compile and confirm 14 pages before submission.**
 
 ---
 
@@ -176,10 +185,36 @@ reduce pages).
 - **Co-author / advisor:** Praisan Padungweang (Khon Kaen University) — must approve
   before submission. ORCIDs already in `\author{...}`.
 
+### Session summary (2026-06-23 → 2026-06-24)
+The following edits have been applied to `paper/main.tex`:
+- **Terminology RESOLVED:** "behavioral tests" now used consistently everywhere
+  (was mixed with "paradigms" and "test paradigms" in §3.1, §5.2).
+- **§3.1 Dataset** — full prose rewrite (improved sentence structure, removed
+  clunky "Crucially..." sentence → replaced with concise box-free annotation note).
+- **§3.2 Architecture** — full prose rewrite (fixed grammar, removed informal
+  language, "U-Net-style" → "dense per-pixel decoder" to match abstract).
+- **§3.3 Loss Function** — full prose rewrite (fixed redundancies, moved ε=1
+  definition next to equation, tightened each paragraph).
+- **§3.4 Order-Invariant Instance Matching** — sentence-by-sentence review done;
+  Gemini version obtained and reviewed. **NOT YET APPLIED.** Three fixes needed
+  before applying:
+  1. Remove all `[cite: 240]` Gemini artifacts
+  2. Fix "it from the network may place..." → "it may place..." (Gemini error)
+  3. Remove "PyTorch" → "computation graph"
+  After applying, restore `\cite{kuhn1955hungarian}` in Step 2.
+  Good things to keep from Gemini version: separate `\noindent\textbf{}` paragraphs
+  per step, `\hat{M}_i`/`M_j` notation with definition line, `\operatorname{IoU}`.
+- **Several minor fixes** across the paper: "L² distance" removed from §3.3,
+  pose head grammar fixed in §3.2, "laboratory subjects" → "laboratory mice" in
+  Conclusion.
+
 ### Open items
-- **Terminology consistency:** abstract + intro say "behavioral **tests**"; §3.1
-  Dataset still says "behavioral **paradigms**". Pick one (UNRESOLVED).
+- **§3.4** — apply Gemini version with 3 fixes above (next task).
+- **§3.5 Data Augmentation** — not yet reviewed.
+- **§4 Experimental Setup, §5 Results, §6 Conclusion** — not yet reviewed in
+  this round (were reviewed in a prior session; may need another pass).
+- **Compile PDF** — not done on this machine (no MiKTeX). Must verify 14 pages
+  after all edits are applied. Use original machine or Overleaf.
 - **Baseline numbers** (Mask R-CNN 0.7854, YOLO26-Seg 0.5451, YOLO26-Pose 0.8872,
-  maDLC 0.4098) need verification against the baseline run logs — not reproducible
+  maDLC 0.4098) need verification against baseline run logs — not reproducible
   from this repo alone (baselines trained elsewhere).
-- Methodology line-by-line review in progress (was at §3.1 Dataset).

@@ -123,20 +123,23 @@ To overcome these limitations, HybridMTLNet is a proposal-free, box-free, multi-
 \section{Methodology}
 
 \subsection{Dataset}
-We collected 3{,}710 photos from eight common behavioral test
-paradigms: Morris water maze, dark/light box, novel
-object recognition, forced swim, Y-maze, mirror box, elevated plus
-maze, and tail suspension. Images have one or two mice (64.4\%
-single-mouse, 35.6\% two-mouse) and are labeled with per-instance
-binary segmentation masks and three skeletal keypoints per animal
-(nose, shoulder, tail base). All annotations were completed manually
-with the Label Studio tool; each label was checked by a second
-annotator and inconsistencies were addressed by consensus.
-Bounding-box annotations are not required. The images are separated
-into train (2{,}968), validation (371), and test (371) sets in an
-80/10/10 ratio. The source photos are of mixed resolution
-(640\(\times\)360 and 1280\(\times\)720); all models are trained and
-evaluated at 256\(\times\)256.
+The dataset comprises 3{,}710 images collected across eight distinct
+laboratory behavioral tests: the Morris water maze, dark/light box,
+novel object recognition, forced swim, Y-maze, mirror box, elevated
+plus maze, and tail suspension. The images contain either one or two
+mice (64.4\% single-mouse and 35.6\% two-mouse configurations) and
+are manually annotated with per-instance binary segmentation masks
+and three skeletal keypoints per animal (the nose, shoulder, and tail
+base). All annotations were completed using the Label Studio tool,
+where each label underwent cross-verification by a second annotator,
+resolving any inconsistencies via consensus. Since the framework
+requires no bounding boxes, annotations consist of masks and keypoints
+only. For experimental evaluation, the dataset is partitioned into
+training (2{,}968), validation (371), and testing (371) sets according
+to an 80/10/10 ratio. While the source photographs feature mixed
+resolutions ($640\times360$ and $1280\times720$), all subsequent
+models are trained and evaluated at a standardized spatial resolution
+of $256\times256$.
 
 \subsection{Architecture}
 
@@ -201,74 +204,92 @@ evaluated at 256\(\times\)256.
   \label{fig:arch}
 \end{figure}
 
-HybridMTLNet performs instance segmentation and keypoint estimation
-together in one forward pass, as shown in Fig.~\ref{fig:arch}. It has
-three main parts: a shared encoder, a segmentation decoder, and a pose
-head.
+As illustrated in Fig.~\ref{fig:arch}, HybridMTLNet performs
+instance segmentation and keypoint estimation in a single forward
+pass. The network consists of three components: a shared encoder,
+a segmentation decoder, and a pose head.
 
 \noindent\textbf{Shared Encoder.}
-The backbone is a pretrained ResNet-34 \cite{he2016resnet} on ImageNet for extracting features from the input image. This encoder is shared between the two tasks, which prevents double feature extraction. The features are extracted at four distinct resolutions (multi-scale) and supplied to the decoder via skip connections, helping keep the edges of the mask crisp.
+The backbone is a ResNet-34 \cite{he2016resnet} pretrained on
+ImageNet. Sharing this encoder across both tasks eliminates
+redundant feature extraction. Features are extracted at four
+distinct resolutions and passed to the decoder via skip
+connections, preserving fine spatial detail.
 
 \noindent\textbf{Segmentation Decoder.}
-This is a U-Net-style decoder \cite{ronneberger2015unet} that progressively upsamples the tiny features at the bottleneck with bilinear interpolation. The concatenated skip features regain the edge details at each layer. The output is a 2-channel mask ($2 \times H \times W$), where each channel corresponds to one mouse. By predicting every pixel at full resolution---rather than upsampling from a low-resolution RoI grid---it produces finer, more precise mask boundaries.
+The segmentation branch is a dense per-pixel decoder
+\cite{ronneberger2015unet} that progressively upsamples the
+low-resolution bottleneck features via bilinear interpolation.
+Skip-connected encoder features restore spatial detail at each
+resolution level. The output is a 2-channel mask
+($2 \times H \times W$), where each channel corresponds to one
+mouse. By predicting at full $256\times256$ resolution---rather
+than upsampling from a low-resolution RoI grid---the decoder
+produces precise mask boundaries.
 
 \noindent\textbf{Pose Head.}
-For keypoint estimation, we frame this task as heatmap regression instead of regressing $(x, y)$ coordinates directly with fully connected layers, which discards spatial structure. The pose head is made of three consecutive deconvolution (transposed convolution) layers followed by a $1\times1$ convolution that upsample the shared features to produce a $6 \times H \times W$ probability heatmap (3 keypoints for each of the 2 instances). Each pixel value is the probability that the keypoint lies at that location. At inference, we read each keypoint's coordinates as the pixel with the highest value (argmax) in its channel.
+For keypoint estimation, we use heatmap regression rather than
+directly regressing $(x,y)$ coordinates via fully connected
+layers, an approach that discards spatial structure. The pose
+head consists of three transposed-convolution layers that
+progressively upsample the shared features, followed by a
+$1\times1$ convolution to produce a $6 \times H \times W$
+heatmap (3 keypoints $\times$ 2 instances). Each channel
+encodes the likelihood that the keypoint lies at each spatial
+location; at inference, the coordinates are read as the argmax
+of the corresponding channel.
 
-\noindent The two output heads are fixed-width---a two-channel mask and six heatmaps---so the network handles at most two instances per image, matching our dataset.
+\noindent The two output heads are fixed-width---a two-channel
+mask and six heatmaps---so the network handles at most two
+instances per image, matching our dataset.
 
 \subsection{Loss Function}
 We train HybridMTLNet with a single multi-task objective. The overall
-loss ($\mathcal{L}_{\text{total}}$) is the weighted sum of the instance
-segmentation loss ($\mathcal{L}_{\text{seg}}$) and the keypoint
-estimation loss ($\mathcal{L}_{\text{pose}}$):
+loss ($\mathcal{L}_{\text{total}}$) is the weighted sum of the
+segmentation loss ($\mathcal{L}_{\text{seg}}$) and the pose loss
+($\mathcal{L}_{\text{pose}}$):
 \begin{equation}
   \mathcal{L}_{\text{total}} = \lambda_{\text{seg}}\,\mathcal{L}_{\text{seg}}
               + \lambda_{\text{pose}}\,\mathcal{L}_{\text{pose}}
   \label{eq:loss}
 \end{equation}
-where $\lambda_{\text{seg}}$ and $\lambda_{\text{pose}}$ are the
-loss-balancing hyperparameters that balance the gradient magnitudes of
-the two tasks.
+where $\lambda_{\text{seg}}$ and $\lambda_{\text{pose}}$ are scalar
+weights controlling the relative gradient magnitudes of the two tasks.
 
 \noindent\textbf{Segmentation Loss.}
-The segmentation loss is a combined loss of the Binary Cross-Entropy
-(BCE) and the Dice loss \cite{milletari2016vnet} for robust
-supervision at both the pixel and structure levels:
+The segmentation loss combines Binary Cross-Entropy (BCE) and Dice
+loss \cite{milletari2016vnet} for supervision at both the pixel and
+structure levels:
 \begin{equation}
   \mathcal{L}_{\text{seg}} = \mathcal{L}_{\text{BCE}} +
   \left(1 - \frac{2\sum p\,g + \epsilon}{\sum p + \sum g + \epsilon}\right)
 \end{equation}
-$\mathcal{L}_{\text{BCE}}$ penalizes pixel-by-pixel classification
-mistakes between the predicted and ground-truth masks, while the Dice
-term quantifies the overall spatial overlap of the foreground region,
-where $\epsilon = 1$ is a smoothing constant.
-The Dice term handles the strong foreground--background imbalance
-common in cage scenes, so the network does not simply predict the
-background everywhere.
+where $\epsilon = 1$ is a smoothing constant. BCE penalizes
+pixel-wise misclassifications between the predicted and ground-truth
+masks. The Dice term measures the overall foreground overlap,
+preventing the network from collapsing to an all-background
+prediction---a failure mode common in cage scenes where the
+background dominates.
 
 \noindent\textbf{Pose Loss.}
-The pose loss is computed as the Mean Squared Error (MSE) --- the
-L\textsuperscript{2} distance --- between the predicted heatmap
-($\hat{H}$) and the target Gaussian heatmap ($H$), averaged over all
-$K = 6$ keypoint channels and the $H \times W$ pixels:
+The pose loss is the Mean Squared Error (MSE) between the predicted
+heatmap ($\hat{H}$) and the target Gaussian heatmap ($H$), averaged
+over all $K = 6$ keypoint channels and the $H \times W$ pixels:
 \begin{equation}
   \mathcal{L}_{\text{pose}} = \frac{1}{K H W}
   \sum_{k=1}^{K} \|\hat{H}_k - H_k\|_2^2
 \end{equation}
-The MSE loss penalizes large localization errors heavily, pushing the
-network toward the exact keypoint locations.
+The squared penalty encourages precise keypoint localization.
 
 \noindent\textbf{Loss Weight Balancing.}
-The loss-balancing weights are set to $\lambda_{\text{seg}} = 1$ and
-$\lambda_{\text{pose}} = 500$ through empirical evaluation. The target
-keypoint heatmaps are quite sparse (mostly zeros except in the small
-Gaussian peaks), so the magnitude of $\mathcal{L}_{\text{pose}}$ is
-intrinsically two to three orders of magnitude smaller than
-$\mathcal{L}_{\text{seg}}$. Without this scaling,
-segmentation dominates the gradient and the pose head trains poorly.
-We set $\lambda_{\text{pose}} = 500$;
-Section~\ref{sec:weights} analyzes this choice empirically.
+The weights are set to $\lambda_{\text{seg}} = 1$ and
+$\lambda_{\text{pose}} = 500$. The target heatmaps are highly
+sparse---mostly zeros except at small Gaussian peaks---so the
+magnitude of $\mathcal{L}_{\text{pose}}$ is intrinsically two to
+three orders of magnitude smaller than $\mathcal{L}_{\text{seg}}$.
+Without this scaling, segmentation dominates the gradient and the
+pose head trains poorly. Section~\ref{sec:weights} analyzes this
+choice empirically.
 
 \subsection{Order-Invariant Instance Matching}
 HybridMTLNet is a box-free model (a 2-channel mask and a 6-channel heatmap), and its output channels are unordered. In one image, the network may place the left mouse in the first channel, whereas for another image it may place the right mouse in the first channel. This phenomenon is termed permutation symmetry, or label switching.
@@ -423,7 +444,7 @@ metrics in a single forward pass.
 
 \subsection{Qualitative Analysis}
 Figure~\ref{fig:qualitative} shows HybridMTLNet's predictions on test
-images from each of the eight behavioral paradigms. In all cases, our
+images from each of the eight behavioral tests. In all cases, our
 approach produces per-instance segmentation masks and three-keypoint
 skeletons simultaneously for up to two subjects in a single forward
 pass, indicating that the shared encoder learns robust features that
@@ -594,7 +615,7 @@ Modular (2 models)           & 57.4 & 57.5 & 55.9 & 7.4 \\
 \section{Conclusion}
 We propose HybridMTLNet, a unified box-free multi-task learning
 framework for simultaneous instance segmentation and keypoint
-estimation of laboratory subjects in one forward pass. This lets us
+estimation of laboratory mice in one forward pass. This lets us
 avoid bounding-box annotations, and we resolve instance-identity
 assignments with dynamic Hungarian matching on mask IoU. Our approach is based on a shared ResNet-34 encoder, with a
 dense U-Net-style decoder and a deconvolutional pose head.
