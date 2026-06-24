@@ -7,37 +7,37 @@ Reallocating 'name_of_file' (item size: 1) to 11 items.
 Database file #1: references.bib
 You've used 25 entries,
             2850 wiz_defined-function locations,
-            735 strings with 9754 characters,
-and the built_in function-call counts, 17172 in all, are:
-= -- 1467
-> -- 600
+            736 strings with 9573 characters,
+and the built_in function-call counts, 16823 in all, are:
+= -- 1449
+> -- 555
 < -- 29
-+ -- 247
-- -- 220
-* -- 1083
-:= -- 2161
++ -- 229
+- -- 202
+* -- 1049
+:= -- 2107
 add.period$ -- 44
 call.type$ -- 25
-change.case$ -- 215
+change.case$ -- 206
 chr.to.int$ -- 0
 cite$ -- 25
-duplicate$ -- 1450
-empty$ -- 1457
-format.name$ -- 243
-if$ -- 3784
+duplicate$ -- 1434
+empty$ -- 1450
+format.name$ -- 225
+if$ -- 3723
 int.to.chr$ -- 0
 int.to.str$ -- 25
-missing$ -- 290
+missing$ -- 281
 newline$ -- 81
 num.names$ -- 50
-pop$ -- 571
+pop$ -- 552
 preamble$ -- 1
-purify$ -- 158
+purify$ -- 149
 quote$ -- 0
 skip$ -- 518
 stack$ -- 0
 substring$ -- 1035
-swap$ -- 838
+swap$ -- 824
 text.length$ -- 29
 text.prefix$ -- 0
 top$ -- 0

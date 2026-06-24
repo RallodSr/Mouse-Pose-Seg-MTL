@@ -176,9 +176,16 @@ reduce pages).
 
 ## 9. Status & pending work
 
-- **Abstract, Introduction, Related Work, Fig. 1 caption, and all of §3 Methodology**
-  — reviewed line-by-line with the user and finalized. Intro reuses the
-  advisor-approved abstract's wording.
+- **ALL sections reviewed line-by-line and finalized** — abstract, §1 Introduction,
+  §2 Related Work, §3 Methodology, §4 Experimental Setup, §5 Results, §6 Conclusion,
+  Tables 1–4, and Figs 1–3 captions. Intro reuses the advisor-approved abstract's wording.
+- **Pre-submission audit done (2026-06-25):** clean build = 14 pages; 0 LaTeX errors,
+  0 undefined refs/cites, 0 overfull hboxes (added `\emergencystretch=1em` to preamble),
+  0 citation warnings. `\cite`↔`.bib` perfect (25=25, none uncited/undefined). All
+  result numbers cross-consistent (0.8083/0.9605 appear identically in 7 places; no
+  stale 0.9542). **All 25 references web-verified** — fixed SLEAP author (Z.H.→Z.Y.,
+  then trimmed to "Pereira, T.D., et al."), added STCS issue number 11; everything else
+  correct (incl. YOLO26 arXiv:2606.03748 confirmed real).
 - **DSAI 2026 submission:** abstract registered on EasyChair (**Submission 25**).
   **Full paper PDF due ~29 June 2026.** Check whether review is double-blind (the
   current PDF shows author names; anonymize if required). Source files (`.tex/.bib/
@@ -209,9 +216,7 @@ The following edits have been applied to `paper/main.tex`:
   pose head grammar fixed in §3.2, "laboratory subjects" → "laboratory mice" in
   Conclusion.
 
-### Open items
-- **§4 Experimental Setup, §5 Results, §6 Conclusion** — line-by-line review still
-  pending (were reviewed in a prior session; may need another pass).
+### Open items (remaining before submit — need the user / external info)
 - **Baseline numbers** (Mask R-CNN 0.7854, YOLO26-Seg 0.5451, YOLO26-Pose 0.8872,
   maDLC 0.4098) need verification against baseline run logs — not reproducible
   from this repo alone (baselines trained elsewhere).

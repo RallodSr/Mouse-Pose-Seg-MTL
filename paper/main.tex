@@ -13,10 +13,13 @@
 
 % Augmented Mask R-CNN (single run, seed 42) -- single source of truth for Table 1 + Sec 5.1.
 \newcommand{\mrcnnmiou}{0.7854}
-\newcommand{\mrcnndelta}{+0.023}
+\newcommand{\mrcnndelta}{+0.0229}
 
 % prevent bad line-break hyphenation of the brand name in ref [6]
 \hyphenation{Ultralytics}
+
+% last-resort stretch so long unbreakable tokens (e.g. HybridMTLNet) don't overflow the margin
+\emergencystretch=1em
 
 \begin{document}
 
@@ -294,23 +297,24 @@ choice empirically.
 \subsection{Order-Invariant Instance Matching}
 HybridMTLNet is a box-free model (a 2-channel mask and a 6-channel heatmap), and its output channels are unordered. In one image, the network may place the left mouse in the first channel, whereas for another image it may place the right mouse in the first channel. This phenomenon is termed permutation symmetry, or label switching.
 
-We overcome this by performing a three-step alignment at each training step. \textbf{Step 1 --- Construct a cost matrix.} Let $N_{\text{pred}}$ and $N_{\text{gt}}$ be the number of predicted and ground-truth instances. We construct a cost matrix $C$ of size $N_{\text{pred}} \times N_{\text{gt}}$, where each entry $C_{i,j}$ represents the dissimilarity between prediction $i$ and ground-truth instance $j$, defined as one minus their mask overlap (IoU):
+We overcome this by performing a three-step alignment at each training step. \textbf{Step 1 --- Construct a cost matrix.} Let $N_{\text{pred}}$ and $N_{\text{gt}}$ be the numbers of predicted and ground-truth instances, respectively. We construct a cost matrix $C$ of size $N_{\text{pred}} \times N_{\text{gt}}$, where each entry $C_{i,j}$ represents the dissimilarity between prediction $i$ and ground-truth instance $j$, defined as one minus their mask overlap (IoU):
 \begin{equation}
-  C_{i,j} = 1 - \text{IoU}(\hat{S}_i, S_j)
+  C_{i,j} = 1 - \operatorname{IoU}(\hat{S}_i, S_j)
 \end{equation}
-The wider the overlap, the higher the IoU and the lower the cost. \textbf{Step 2 --- Find the best matching.} We use the Hungarian algorithm (linear sum assignment) \cite{kuhn1955hungarian} to find the one-to-one matching with the lowest total cost, which is equivalent to the largest total mask overlap. \textbf{Step 3 --- Reorder the ground truth.} Using this matching, we reorder the ground-truth masks and heatmaps to match the output channels of the model, and only then compute $\mathcal{L}_{\text{total}}$. This guarantees that the gradient is consistent across training steps rather than contradictory. The assignment itself is non-differentiable and detached from the computation graph, so gradients flow through the loss but not through the assignment.
+Here $\hat{S}_i$ and $S_j$ denote the predicted and ground-truth instance masks. The larger the overlap, the higher the IoU and the lower the cost. \textbf{Step 2 --- Find the best matching.} We use the Hungarian algorithm (linear sum assignment) \cite{kuhn1955hungarian} to find the one-to-one matching with the lowest total cost, which is equivalent to the largest total mask overlap. \textbf{Step 3 --- Reorder the ground truth.} Using this matching, we reorder the ground-truth masks and heatmaps to match the output channels of the model, and only then compute $\mathcal{L}_{\text{total}}$. This guarantees that the gradient is consistent across training steps rather than contradictory. The assignment itself is non-differentiable and detached from the computation graph, so gradients flow through the loss but not through the assignment.
 
 \subsection{Data Augmentation}
-To improve robustness, we apply online data augmentation during
-training. The following transformations are applied
-randomly to each training sample with probability $p = 0.5$:
-horizontal flip, vertical flip, random rotation by $\pm 30^\circ$, and
+To enhance generalization and robustness, we apply online data
+augmentation during training. The following transformations are applied
+randomly to each training sample with probability $p = 0.5$: horizontal
+flipping, vertical flipping, random rotation within $\pm 30^\circ$, and
 color jittering (brightness in $[0.7, 1.3]$ and contrast in
-$[0.8, 1.2]$). To keep the two heads consistent, all geometric transformations
-(flipping and rotation) are applied identically to the input image,
-the ground-truth masks, and the keypoint coordinates. Color jittering
-is applied only to the input image, so it does not change any spatial
-annotation.
+$[0.8, 1.2]$). To maintain cross-task consistency between the two output
+heads, all geometric transformations (flipping and rotation) are applied
+identically to the input image, the ground-truth instance masks, and the
+skeletal keypoint coordinates. By contrast, color jittering is applied
+only to the input image, ensuring that photometric changes do not
+distort any spatial annotation.
 
 % ------------------------------------------------------------------
 \section{Experimental Setup}
@@ -320,14 +324,14 @@ All models were implemented in PyTorch and trained on a single NVIDIA
 GeForce RTX~5060 GPU with 8~GB of memory. For HybridMTLNet, we used
 the Adam optimizer with an initial learning rate of $1 \times
 10^{-4}$. Rather than a fixed schedule, we let the rate adapt: the
-ReduceLROnPlateau scheduler halves it whenever the validation loss
-stops improving for 5 epochs. Training ran for 100 epochs at a batch
+ReduceLROnPlateau scheduler halves the rate whenever the validation loss
+stops improving for 5 consecutive epochs. Training ran for 100 epochs at a batch
 size of 16, with every input image resized to $256 \times 256$.
 
 For reproducibility, we forced cuDNN into deterministic mode and
 reused the same data split across all runs. Because GPU training is
-not perfectly deterministic, we train every configuration with three
-random seeds (42, 43, and 44) and report the mean~$\pm$~standard
+not perfectly deterministic, we trained every configuration with three
+random seeds (42, 43, and 44) and reported the mean~$\pm$~standard
 deviation. The loss-weight sweep
 (Table~\ref{tab:weights}) and the training curves
 (Fig.~\ref{fig:training}) show a single representative run at the
@@ -335,9 +339,9 @@ chosen 1{:}500 ratio.
 
 The baselines follow their own standard recipes. The YOLO-based models
 \cite{jocher2026yolo26} were fine-tuned for 100 epochs with their
-default pipelines, while Mask R-CNN \cite{he2017maskrcnn} was trained
+default pipelines. Mask R-CNN \cite{he2017maskrcnn}, by contrast, was trained
 with SGD for the same duration under the same data augmentation as
-ours, for a fair segmentation comparison. For multi-animal DeepLabCut
+ours, for a fair instance segmentation comparison. For multi-animal DeepLabCut
 \cite{mathis2018deeplabcut}, we ran 10{,}000 iterations in
 static-image mode and omitted the downstream identity-assembly stage,
 since our evaluation uses isolated, non-consecutive frames rather than
@@ -348,8 +352,8 @@ To compare multi-task and single-task designs fairly, we use two
 standard metrics.
 
 \noindent\textbf{Mean Intersection over Union (mIoU).}
-Used for instance segmentation evaluation, it measures per-instance
-IoU across the dataset:
+For instance segmentation, it measures the per-instance IoU across
+the dataset:
 \begin{equation}
   \text{mIoU} = \frac{1}{N}\sum_{i=1}^{N}
   \frac{|P_i \cap G_i|}{|P_i \cup G_i|}
@@ -359,7 +363,7 @@ match predicted masks to ground-truth masks. Any unmatched
 ground-truth mask is scored as IoU 0.
 
 \noindent\textbf{Percentage of Correct Keypoints (PCK@0.05).}
-Used in pose estimation, it follows the standard PCK protocol
+For pose estimation, it follows the standard PCK protocol
 popularized by Yang and Ramanan \cite{yang2011pck} and adopted by Mathis et al.\
 (DeepLabCut) \cite{mathis2018deeplabcut}, which considers a predicted
 keypoint correct if its Euclidean distance to the ground-truth
@@ -409,7 +413,7 @@ DeepLabCut (maDLC)   & Pose only & —      & 0.4098 \\
 \midrule
 \textbf{HybridMTLNet (Ours)} & \textbf{Seg + Pose} & \textbf{0.8083\,$\pm$\,0.0012} & \textbf{0.9605\,$\pm$\,0.0027} \\
 \midrule
-\multicolumn{2}{l}{\(\Delta\) vs.\ best single-task} & \mrcnndelta & +0.073 \\
+\multicolumn{2}{l}{\(\Delta\) vs.\ best single-task} & \mrcnndelta & +0.0733 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -447,13 +451,13 @@ Figure~\ref{fig:qualitative} shows HybridMTLNet's predictions on test
 images from each of the eight behavioral tests. In all cases, our
 approach produces per-instance segmentation masks and three-keypoint
 skeletons simultaneously for up to two subjects in a single forward
-pass, indicating that the shared encoder learns robust features that
-generalize across the diverse behavioral paradigms.
+pass, indicating that the shared encoder learns features that generalize
+across diverse scenarios.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{figures/qualitative_results.png}
-  \caption{Qualitative results across the eight behavioral paradigms.
+  \caption{Qualitative results across the eight behavioral tests.
   Each tile shows HybridMTLNet's per-instance segmentation masks and
   keypoint skeletons (nose--shoulder--tail) on a held-out test image.}
   \label{fig:qualitative}
@@ -538,7 +542,7 @@ $0.9605 \pm 0.0027$, a drop of $0.0114$ from the $0.9719 \pm 0.0018$ of
 the pose-only baseline. Because this gap is larger than the
 seed-to-seed variation, it is a small but genuine case of negative
 transfer, or task interference
-\cite{kendall2018multitask,standley2020tasks}. Because
+\cite{kendall2018multitask,standley2020tasks}. Since
 the shared ResNet-34 encoder must serve two geometrically different
 tasks, it cannot fully reach the optimum of each one.
 
@@ -568,7 +572,7 @@ climbs more gradually. The ReduceLROnPlateau scheduler decays the
 learning rate at epoch 90 when the validation loss stops improving; the
 smaller steps then push validation PCK to its peak of 0.9595 at epoch
 97 (a validation peak; the result tables report test-set scores). Small
-train--validation gaps (0.035 mIoU, 0.019 PCK) confirm good generalization.
+train--validation gaps (0.035 mIoU, 0.019 PCK) indicate good generalization.
 
 \begin{figure}[t]
   \centering
@@ -648,7 +652,7 @@ pre-existing images and involved no live-animal procedures.
 
 % ------------------------------------------------------------------
 \paragraph{Acknowledgments.}
-This work was carried out at the Department of Computer Engineering,
+This work was carried out at the College of Computer,
 Khon Kaen University, and we thank the Faculty of Pharmaceutical
 Sciences for providing the image data.
 

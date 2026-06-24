@@ -78,10 +78,8 @@ Nie, X., Feng, J., Yan, S.: Mutual learning to adapt for joint human parsing
   502--517 (2018)
 
 \bibitem{pereira2022sleap}
-Pereira, T.D., Tabris, N., Matsliah, A., Turner, D.M., Li, J., Ravindranath,
-  S., Papadoyannis, E.S., Normand, E., Deutsch, D.S., Wang, Z.H., et~al.:
-  Sleap: A deep learning system for multi-animal pose tracking. Nature Methods
-  \textbf{19}(4),  486--495 (2022)
+Pereira, T.D., et~al.: Sleap: A deep learning system for multi-animal pose
+  tracking. Nature Methods  \textbf{19}(4),  486--495 (2022)
 
 \bibitem{ronneberger2015unet}
 Ronneberger, O., Fischer, P., Brox, T.: U-net: Convolutional networks for
@@ -102,7 +100,7 @@ Sun, K., Xiao, B., Liu, D., Wang, J.: Deep high-resolution representation
 \bibitem{tang2024stcs}
 Tang, C., Zhou, Y., Zhao, S., et~al.: Segmentation tracking and clustering
   system enables accurate multi-animal tracking of social behaviors. Patterns
-  \textbf{5},  101057 (2024). \doi{10.1016/j.patter.2024.101057}
+  \textbf{5}(11),  101057 (2024). \doi{10.1016/j.patter.2024.101057}
 
 \bibitem{wang2020solov2}
 Wang, X., Zhang, R., Kong, T., Li, L., Shen, C.: {SOLOv2}: Dynamic and fast
