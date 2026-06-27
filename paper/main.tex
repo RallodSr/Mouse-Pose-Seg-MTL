@@ -44,7 +44,7 @@ Khon Kaen, Thailand\\
 Automated tracking of morphology and laboratory-mice posture usually
 runs instance segmentation and pose estimation as two separate
 pipelines, which wastes computation, or uses proposal-driven detectors
-that blur object boundaries through quantization. To address these
+that blur object boundaries through coarse, fixed-resolution mask prediction. To address these
 limitations, we propose \textbf{HybridMTLNet}, a unified, box-free
 multi-task learning framework for simultaneous multi-instance
 segmentation and keypoint localization in a single forward pass. The
@@ -75,7 +75,7 @@ instance segmentation, which outlines each animal's body, and pose
 estimation, which locates its joints. In practice, however, these
 usually run as two separate pipelines, which wastes computation, or
 rely on proposal-driven detectors that blur object boundaries through
-quantization.
+coarse, fixed-resolution mask prediction.
 
 To address these limitations, we propose HybridMTLNet, a unified,
 box-free multi-task learning framework for simultaneous multi-instance
@@ -113,14 +113,14 @@ The main contributions of this work are summarized as follows:
 Locating anatomical landmarks in images has progressed from classical part-based models to deep learning. Early methods, such as the deformable part models of Yang and Ramanan \cite{yang2011pck}, used mixtures-of-parts to model body configurations and popularized the Percentage of Correct Keypoints (PCK) as a standard metric. Newell et al.\ \cite{newell2016stacked} reshaped the field with the Stacked Hourglass Network, which casts keypoint localization as Gaussian heatmap regression. HRNet \cite{sun2019hrnet} later refined this paradigm, maintaining high-resolution feature representations throughout the network. For biological research, open-source markerless frameworks such as DeepLabCut \cite{mathis2018deeplabcut} and SLEAP \cite{pereira2022sleap} adapted these heatmap-regression methods to laboratory-animal tracking, with SLEAP extending to multi-animal social settings through Part Affinity Fields (PAFs). However, these frameworks handle only sparse keypoints and cannot capture fine object shape or boundaries.
 
 \subsection{Dense Instance Segmentation}
-Top-down, proposal-driven architectures have long been the dominant paradigm for instance segmentation. Mask R-CNN \cite{he2017maskrcnn} pioneered the detect-then-segment approach and still sets the standard. Recent iterations, such as YOLO-Seg \cite{jocher2026yolo26}, optimize these pipelines for real-time one-stage deployment. Despite their efficiency, these frameworks depend on spatial bounding-box proposals and Region-of-Interest (RoI) pooling. The downsampling inside RoI pooling introduces large quantization errors that blur object boundaries at full resolution. To relieve these artifacts, proposal-free and box-free frameworks have emerged. In particular, SOLOv2 \cite{wang2020solov2} formulates instance segmentation as a location-category prediction problem that directly yields high-fidelity dense masks from continuous feature grids without bounding-box interventions. However, these box-free models target only mask generation and do not support extra tasks such as keypoint regression or joint pose estimation.
+Top-down, proposal-driven architectures have long been the dominant paradigm for instance segmentation. Mask R-CNN \cite{he2017maskrcnn} pioneered the detect-then-segment approach and still sets the standard. Recent iterations, such as YOLO-Seg \cite{jocher2026yolo26}, optimize these pipelines for real-time one-stage deployment. Despite their efficiency, these frameworks crop each detected instance to a region of interest and predict its mask on a fixed, low-resolution grid (for example, $28\times28$ in Mask R-CNN). Upsampling this coarse mask back to full resolution blurs fine object boundaries. To relieve these artifacts, proposal-free and box-free frameworks have emerged. In particular, SOLOv2 \cite{wang2020solov2} formulates instance segmentation as a location-category prediction problem that directly yields high-fidelity dense masks from continuous feature grids without bounding-box interventions. However, these box-free models target only mask generation and do not support extra tasks such as keypoint regression or joint pose estimation.
 
 \subsection{Multi-Task Learning of Representations}
 Multi-task learning (MTL) trains a single shared backbone across multiple objective functions to learn generalized representations \cite{caruana1997multitask}. Joint segmentation and pose estimation have been integrated into unified networks, such as Parsing R-CNN \cite{yang2019parsingrcnn} and UniPose \cite{artacho2020unipose}, for human vision analysis. However, joint optimization is often hampered by gradient conflicts, also known as task interference or negative transfer, where competing objectives prevent the shared weights from reaching the best solution for each task \cite{kendall2018multitask,standley2020tasks}. Gradient surgery techniques (e.g., PCGrad \cite{yu2020pcgrad}) address this at the optimization stage. In automated animal behavioral analysis, however, multi-task tracking has traditionally relied on modular pipelines.
 
 Frameworks such as SIPEC \cite{marks2022sipec}, STCS \cite{tang2024stcs}, and InteBOMB \cite{zhai2025intebomb} chain together independent models---for example, Mask R-CNN for instance localization followed by separate networks for identification and pose estimation. Because these models share no internal features, they repeat feature extraction and incur high latency. Recently, unified single-network alternatives such as YOLO-SP \cite{jiang2025yolosp} and MT-SRNet \cite{liu2025mtsrnet} have been proposed, performing multi-task tracking in a single framework. However, they remain detection-based and depend on either bounding-box proposals or rotated rectangles. Moreover, these models are mostly developed for agricultural settings such as crop harvesting and livestock (e.g., pigs) in open environments, and are not well adapted to the spatial constraints and structural ambiguities of small laboratory-rodent tracking.
 
-To overcome these limitations, HybridMTLNet is a proposal-free, box-free, multi-task network that tracks laboratory mice in a single forward pass. Our framework unifies instance segmentation and keypoint localization via a shared encoder and dynamic Hungarian matching, eliminating the redundant computational cost of modular pipelines and the quantization artifacts of proposal-based single networks.
+To overcome these limitations, HybridMTLNet is a proposal-free, box-free, multi-task network that tracks laboratory mice in a single forward pass. Our framework unifies instance segmentation and keypoint localization via a shared encoder and dynamic Hungarian matching, eliminating the redundant computational cost of modular pipelines and the boundary artifacts of proposal-based mask heads.
 
 % ------------------------------------------------------------------
 \section{Methodology}
@@ -333,18 +333,18 @@ size of 16, with every input image resized to $256 \times 256$.
 
 For reproducibility, we forced cuDNN into deterministic mode and
 reused the same data split across all runs. Because GPU training is
-not perfectly deterministic, we trained every configuration with three
-random seeds (42, 43, and 44) and reported the mean~$\pm$~standard
-deviation. The loss-weight sweep
+not perfectly deterministic, we report results as the mean~$\pm$~standard
+deviation over three random seeds (42, 43, and 44) for HybridMTLNet, the
+YOLO baselines, and the ablation configurations. The loss-weight sweep
 (Table~\ref{tab:weights}) and the training curves
 (Fig.~\ref{fig:training}) show a single representative run at the
 chosen 1{:}500 ratio.
 
 The baselines follow their own standard recipes. The YOLO-based models
 \cite{jocher2026yolo26} were fine-tuned for 100 epochs with their
-default pipelines. Mask R-CNN \cite{he2017maskrcnn}, by contrast, was trained
-with SGD for the same duration under the same data augmentation as
-ours, for a fair instance segmentation comparison. For multi-animal DeepLabCut
+default pipelines. Mask R-CNN \cite{he2017maskrcnn}, by contrast, was trained as a single
+representative run with SGD for the same duration under the same data
+augmentation as ours, owing to its substantially higher training cost. For multi-animal DeepLabCut
 \cite{mathis2018deeplabcut}, we ran 10{,}000 iterations in
 static-image mode and omitted the downstream identity-assembly stage,
 since our evaluation uses isolated, non-consecutive frames rather than
@@ -431,8 +431,9 @@ instance segmentation and keypoint estimation tasks.
 In the instance segmentation task, HybridMTLNet attains an mIoU of
 0.8083, above the strongest segmentation baseline (the single-run
 Mask R-CNN, \mrcnnmiou). Because our dense per-pixel decoder predicts
-at the full $256 \times 256$ resolution, it avoids the RoI-quantization
-that limits boundary precision in proposal-based mask heads. Our
+at the full $256 \times 256$ resolution, it avoids the proposal cropping and
+fixed-resolution mask prediction that limit boundary precision in
+proposal-based mask heads. Our
 ablation (Section~\ref{sec:ablation}) confirms that this segmentation
 quality stems from the architecture, not from multi-task learning
 synergy.
@@ -577,8 +578,8 @@ instance's keypoint channels, and the predicted heatmaps prime the
 segmentation decoder. Pose PCK then rises from $0.9605$ to $0.9667$ with
 segmentation unchanged (Table~\ref{tab:ablation}), recovering about half
 the gap to the pose-only ceiling. This mitigates the negative transfer
-but does not remove it, and the gain is small relative to seed
-variation. We therefore keep the plain joint model---the minimal
+but does not remove it, and the gain is modest relative to the added
+design complexity. We therefore keep the plain joint model---the minimal
 unified architecture, and the clean setting in which we measure
 transfer---as our main result, treating the cross-task link as an
 optional enhancement rather than the headline. Fully closing the gap
@@ -652,7 +653,8 @@ assignments with dynamic Hungarian matching on mask IoU. Our approach is based o
 dense U-Net-style decoder and a deconvolutional pose head.
 
 Quantitative analysis shows that our unified model matches or exceeds
-the best single-task baselines, including YOLO26 and Mask R-CNN. Our
+the evaluated single-task baselines under our experimental setting,
+including YOLO26 and the single-run Mask R-CNN baseline. Our
 controlled ablation further shows that this segmentation quality
 derives mainly from the dense per-pixel architecture rather than
 multi-task synergy: single-task segmentation accuracy is preserved

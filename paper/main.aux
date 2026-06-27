@@ -16,7 +16,6 @@
 \citation{wang2020solov2}
 \@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{2}{section.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Estimating Animal Visual Pose}{2}{subsection.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Dense Instance Segmentation}{2}{subsection.2.2}\protected@file@percent }
 \citation{caruana1997multitask}
 \citation{yang2019parsingrcnn}
 \citation{artacho2020unipose}
@@ -27,6 +26,7 @@
 \citation{zhai2025intebomb}
 \citation{jiang2025yolosp}
 \citation{liu2025mtsrnet}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Dense Instance Segmentation}{3}{subsection.2.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Multi-Task Learning of Representations}{3}{subsection.2.3}\protected@file@percent }
 \citation{he2016resnet}
 \@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces HybridMTLNet architecture (channels~$\times $~spatial dimensions are indicated per block). A shared ResNet-34 encoder extracts multi-scale features $x_0$--$x_4$. The bottleneck representation $x_4$ feeds two parallel branches: a U-Net-based segmentation decoder ($d_4$--$d_1$, with dotted lines denoting skip connections from the encoder) yielding two dense instance masks, and a deconvolutional pose head ($p_1$--$p_3$) yielding six keypoint heatmaps ($3$ keypoints $\times \,2$ instances). Both outputs are restored to the original $256{\times }256$ resolution.}}{4}{figure.1}\protected@file@percent }
@@ -58,19 +58,19 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Baseline Models}{8}{subsection.4.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {5}Results and Discussion}{8}{section.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Quantitative Comparison}{8}{subsection.5.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Qualitative results across the eight behavioral tests. Each tile shows HybridMTLNet's per-instance segmentation masks and keypoint skeletons (nose--shoulder--tail) on a held-out test image.}}{9}{figure.2}\protected@file@percent }
-\newlabel{fig:qualitative}{{2}{9}{Qualitative results across the eight behavioral tests. Each tile shows HybridMTLNet's per-instance segmentation masks and keypoint skeletons (nose--shoulder--tail) on a held-out test image}{figure.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Qualitative Analysis}{9}{subsection.5.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Failure cases: the worst test images by per-instance mIoU and PCK. Predicted masks and keypoint skeletons are overlaid; white crosses mark ground-truth keypoints. Errors concentrate in low-contrast arenas (Morris water maze, \texttt  {mwm}), reflective scenes (\texttt  {mirror}), and self-occluded postures (\texttt  {elev}), rather than in a single architectural weakness.}}{10}{figure.3}\protected@file@percent }
-\newlabel{fig:failure}{{3}{10}{Failure cases: the worst test images by per-instance mIoU and PCK. Predicted masks and keypoint skeletons are overlaid; white crosses mark ground-truth keypoints. Errors concentrate in low-contrast arenas (Morris water maze, \texttt {mwm}), reflective scenes (\texttt {mirror}), and self-occluded postures (\texttt {elev}), rather than in a single architectural weakness}{figure.3}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Loss-weight ratio (seg:pose) on the joint model; validation-set scores for a single representative run, used to select \(\lambda _{\text  {pose}}\). mIoU stays stable while PCK rises with the pose weight then saturates; we adopt 1:500, whose 3-seed test mean is reported in Table~\ref {tab:results}.}}{10}{table.2}\protected@file@percent }
-\newlabel{tab:weights}{{2}{10}{Loss-weight ratio (seg:pose) on the joint model; validation-set scores for a single representative run, used to select \(\lambda _{\text {pose}}\). mIoU stays stable while PCK rises with the pose weight then saturates; we adopt 1:500, whose 3-seed test mean is reported in Table~\ref {tab:results}}{table.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Loss-Weight Selection}{10}{subsection.5.3}\protected@file@percent }
-\newlabel{sec:weights}{{5.3}{10}{Loss-Weight Selection}{subsection.5.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Single-Task Ablation Study}{10}{subsection.5.4}\protected@file@percent }
-\newlabel{sec:ablation}{{5.4}{10}{Single-Task Ablation Study}{subsection.5.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Loss-Weight Selection}{9}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:weights}{{5.3}{9}{Loss-Weight Selection}{subsection.5.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Single-Task Ablation Study}{9}{subsection.5.4}\protected@file@percent }
+\newlabel{sec:ablation}{{5.4}{9}{Single-Task Ablation Study}{subsection.5.4}{}}
 \citation{kendall2018multitask,standley2020tasks}
 \citation{nie2018mula,xu2018padnet}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Qualitative results across the eight behavioral tests. Each tile shows HybridMTLNet's per-instance segmentation masks and keypoint skeletons (nose--shoulder--tail) on a held-out test image.}}{10}{figure.2}\protected@file@percent }
+\newlabel{fig:qualitative}{{2}{10}{Qualitative results across the eight behavioral tests. Each tile shows HybridMTLNet's per-instance segmentation masks and keypoint skeletons (nose--shoulder--tail) on a held-out test image}{figure.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Loss-weight ratio (seg:pose) on the joint model; validation-set scores for a single representative run, used to select \(\lambda _{\text  {pose}}\). mIoU stays stable while PCK rises with the pose weight then saturates; we adopt 1:500, whose 3-seed test mean is reported in Table~\ref {tab:results}.}}{10}{table.2}\protected@file@percent }
+\newlabel{tab:weights}{{2}{10}{Loss-weight ratio (seg:pose) on the joint model; validation-set scores for a single representative run, used to select \(\lambda _{\text {pose}}\). mIoU stays stable while PCK rises with the pose weight then saturates; we adopt 1:500, whose 3-seed test mean is reported in Table~\ref {tab:results}}{table.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Failure cases: the worst test images by per-instance mIoU and PCK. Predicted masks and keypoint skeletons are overlaid; white crosses mark ground-truth keypoints. Errors concentrate in low-contrast arenas (Morris water maze, \texttt  {mwm}), reflective scenes (\texttt  {mirror}), and self-occluded postures (\texttt  {elev}), rather than in a single architectural weakness.}}{11}{figure.3}\protected@file@percent }
+\newlabel{fig:failure}{{3}{11}{Failure cases: the worst test images by per-instance mIoU and PCK. Predicted masks and keypoint skeletons are overlaid; white crosses mark ground-truth keypoints. Errors concentrate in low-contrast arenas (Morris water maze, \texttt {mwm}), reflective scenes (\texttt {mirror}), and self-occluded postures (\texttt {elev}), rather than in a single architectural weakness}{figure.3}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Single-task ablation and a cross-task variant on the same network (mean~$\pm $~standard deviation over three seeds). Joint training preserves segmentation but loses a little pose accuracy; bidirectional cross-task guidance recovers part of the pose gap without closing it.}}{11}{table.3}\protected@file@percent }
 \newlabel{tab:ablation}{{3}{11}{Single-task ablation and a cross-task variant on the same network (mean~$\pm $~standard deviation over three seeds). Joint training preserves segmentation but loses a little pose accuracy; bidirectional cross-task guidance recovers part of the pose gap without closing it}{table.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Training Dynamics}{11}{subsection.5.5}\protected@file@percent }
