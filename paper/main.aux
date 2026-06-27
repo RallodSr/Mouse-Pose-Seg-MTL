@@ -53,42 +53,44 @@
 \citation{he2017maskrcnn}
 \citation{jocher2026yolo26}
 \citation{mathis2018deeplabcut}
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Test set performance. Our model is reported as the mean~$\pm $~standard deviation over three seeds; the baselines follow their own standard single-run recipe. Best results in \textbf  {bold}; ``—'' indicates the model does not perform that task.}}{8}{table.1}\protected@file@percent }
-\newlabel{tab:results}{{1}{8}{Test set performance. Our model is reported as the mean~$\pm $~standard deviation over three seeds; the baselines follow their own standard single-run recipe. Best results in \textbf {bold}; ``—'' indicates the model does not perform that task}{table.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Test set performance. YOLO baselines and HybridMTLNet are reported as the mean~$\pm $~standard deviation over three random seeds; Mask R-CNN is reported from a single representative run due to its high training cost, using the same data split, input resolution, and evaluation protocol. DeepLabCut is included as a reference baseline. Best results in \textbf  {bold}; ``—'' indicates the model does not perform that task.}}{8}{table.1}\protected@file@percent }
+\newlabel{tab:results}{{1}{8}{Test set performance. YOLO baselines and HybridMTLNet are reported as the mean~$\pm $~standard deviation over three random seeds; Mask R-CNN is reported from a single representative run due to its high training cost, using the same data split, input resolution, and evaluation protocol. DeepLabCut is included as a reference baseline. Best results in \textbf {bold}; ``—'' indicates the model does not perform that task}{table.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Baseline Models}{8}{subsection.4.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {5}Results and Discussion}{8}{section.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Quantitative Comparison}{8}{subsection.5.1}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Qualitative results across the eight behavioral tests. Each tile shows HybridMTLNet's per-instance segmentation masks and keypoint skeletons (nose--shoulder--tail) on a held-out test image.}}{9}{figure.2}\protected@file@percent }
 \newlabel{fig:qualitative}{{2}{9}{Qualitative results across the eight behavioral tests. Each tile shows HybridMTLNet's per-instance segmentation masks and keypoint skeletons (nose--shoulder--tail) on a held-out test image}{figure.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Qualitative Analysis}{9}{subsection.5.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Loss-Weight Selection}{9}{subsection.5.3}\protected@file@percent }
-\newlabel{sec:weights}{{5.3}{9}{Loss-Weight Selection}{subsection.5.3}{}}
-\citation{kendall2018multitask,standley2020tasks}
-\citation{nie2018mula,xu2018padnet}
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Loss-weight ratio (seg:pose) on the joint model; test-set scores for a single representative run (Fig.~\ref {fig:training} tracks validation). mIoU stays stable while PCK rises with the pose weight then saturates; we adopt 1:500, whose 3-seed mean is reported in Table~\ref {tab:results}.}}{10}{table.2}\protected@file@percent }
-\newlabel{tab:weights}{{2}{10}{Loss-weight ratio (seg:pose) on the joint model; test-set scores for a single representative run (Fig.~\ref {fig:training} tracks validation). mIoU stays stable while PCK rises with the pose weight then saturates; we adopt 1:500, whose 3-seed mean is reported in Table~\ref {tab:results}}{table.2}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Single-task ablation and a cross-task variant on the same network (mean~$\pm $~standard deviation over three seeds). Joint training preserves segmentation but loses a little pose accuracy; bidirectional cross-task guidance recovers part of the pose gap without closing it.}}{10}{table.3}\protected@file@percent }
-\newlabel{tab:ablation}{{3}{10}{Single-task ablation and a cross-task variant on the same network (mean~$\pm $~standard deviation over three seeds). Joint training preserves segmentation but loses a little pose accuracy; bidirectional cross-task guidance recovers part of the pose gap without closing it}{table.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Failure cases: the worst test images by per-instance mIoU and PCK. Predicted masks and keypoint skeletons are overlaid; white crosses mark ground-truth keypoints. Errors concentrate in low-contrast arenas (Morris water maze, \texttt  {mwm}), reflective scenes (\texttt  {mirror}), and self-occluded postures (\texttt  {elev}), rather than in a single architectural weakness.}}{10}{figure.3}\protected@file@percent }
+\newlabel{fig:failure}{{3}{10}{Failure cases: the worst test images by per-instance mIoU and PCK. Predicted masks and keypoint skeletons are overlaid; white crosses mark ground-truth keypoints. Errors concentrate in low-contrast arenas (Morris water maze, \texttt {mwm}), reflective scenes (\texttt {mirror}), and self-occluded postures (\texttt {elev}), rather than in a single architectural weakness}{figure.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Loss-weight ratio (seg:pose) on the joint model; validation-set scores for a single representative run, used to select \(\lambda _{\text  {pose}}\). mIoU stays stable while PCK rises with the pose weight then saturates; we adopt 1:500, whose 3-seed test mean is reported in Table~\ref {tab:results}.}}{10}{table.2}\protected@file@percent }
+\newlabel{tab:weights}{{2}{10}{Loss-weight ratio (seg:pose) on the joint model; validation-set scores for a single representative run, used to select \(\lambda _{\text {pose}}\). mIoU stays stable while PCK rises with the pose weight then saturates; we adopt 1:500, whose 3-seed test mean is reported in Table~\ref {tab:results}}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Loss-Weight Selection}{10}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:weights}{{5.3}{10}{Loss-Weight Selection}{subsection.5.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Single-Task Ablation Study}{10}{subsection.5.4}\protected@file@percent }
 \newlabel{sec:ablation}{{5.4}{10}{Single-Task Ablation Study}{subsection.5.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Training dynamics of HybridMTLNet over 100 epochs (single 1:500 run). Segmentation mIoU converges quickly and saturates while pose PCK rises gradually; the dotted line marks the learning-rate decay at epoch 90, and the marker indicates the peak validation PCK (0.9595 at epoch 97).}}{11}{figure.3}\protected@file@percent }
-\newlabel{fig:training}{{3}{11}{Training dynamics of HybridMTLNet over 100 epochs (single 1:500 run). Segmentation mIoU converges quickly and saturates while pose PCK rises gradually; the dotted line marks the learning-rate decay at epoch 90, and the marker indicates the peak validation PCK (0.9595 at epoch 97)}{figure.3}{}}
+\citation{kendall2018multitask,standley2020tasks}
+\citation{nie2018mula,xu2018padnet}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Single-task ablation and a cross-task variant on the same network (mean~$\pm $~standard deviation over three seeds). Joint training preserves segmentation but loses a little pose accuracy; bidirectional cross-task guidance recovers part of the pose gap without closing it.}}{11}{table.3}\protected@file@percent }
+\newlabel{tab:ablation}{{3}{11}{Single-task ablation and a cross-task variant on the same network (mean~$\pm $~standard deviation over three seeds). Joint training preserves segmentation but loses a little pose accuracy; bidirectional cross-task guidance recovers part of the pose gap without closing it}{table.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Training Dynamics}{11}{subsection.5.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Inference Efficiency}{11}{subsection.5.6}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Training dynamics of HybridMTLNet over 100 epochs (single 1:500 run). Segmentation mIoU converges quickly and saturates while pose PCK rises gradually; the dotted line marks the learning-rate decay at epoch 90, and the marker indicates the peak validation PCK (0.9595 at epoch 97).}}{12}{figure.4}\protected@file@percent }
+\newlabel{fig:training}{{4}{12}{Training dynamics of HybridMTLNet over 100 epochs (single 1:500 run). Segmentation mIoU converges quickly and saturates while pose PCK rises gradually; the dotted line marks the learning-rate decay at epoch 90, and the marker indicates the peak validation PCK (0.9595 at epoch 97)}{figure.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Inference efficiency at $256\times 256$ (batch size 1, averaged over 100 runs). The modular baseline runs two separate single-task models of the same architecture; GPU throughput is measured on an NVIDIA RTX~5060.}}{12}{table.4}\protected@file@percent }
+\newlabel{tab:efficiency}{{4}{12}{Inference efficiency at $256\times 256$ (batch size 1, averaged over 100 runs). The modular baseline runs two separate single-task models of the same architecture; GPU throughput is measured on an NVIDIA RTX~5060}{table.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Inference Efficiency}{12}{subsection.5.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{12}{section.6}\protected@file@percent }
 \bibstyle{splncs04}
 \bibdata{references}
 \bibcite{artacho2020unipose}{1}
 \bibcite{caruana1997multitask}{2}
 \bibcite{he2017maskrcnn}{3}
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Inference efficiency at $256\times 256$ (batch size 1, averaged over 100 runs). The modular baseline runs two separate single-task models of the same architecture; GPU throughput is measured on an NVIDIA RTX~5060.}}{12}{table.4}\protected@file@percent }
-\newlabel{tab:efficiency}{{4}{12}{Inference efficiency at $256\times 256$ (batch size 1, averaged over 100 runs). The modular baseline runs two separate single-task models of the same architecture; GPU throughput is measured on an NVIDIA RTX~5060}{table.4}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{12}{section.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Ethics Statement.}{12}{section*.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Acknowledgments.}{12}{section*.3}\protected@file@percent }
 \bibcite{he2016resnet}{4}
 \bibcite{jiang2025yolosp}{5}
 \bibcite{jocher2026yolo26}{6}
 \bibcite{kendall2018multitask}{7}
+\@writefile{toc}{\contentsline {paragraph}{Ethics Statement.}{13}{section*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Acknowledgments.}{13}{section*.3}\protected@file@percent }
 \bibcite{kuhn1955hungarian}{8}
 \bibcite{liu2025mtsrnet}{9}
 \bibcite{marks2022sipec}{10}
@@ -107,4 +109,4 @@
 \bibcite{yang2011pck}{23}
 \bibcite{yu2020pcgrad}{24}
 \bibcite{zhai2025intebomb}{25}
-\gdef \@abspage@last{14}
+\gdef \@abspage@last{15}

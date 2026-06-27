@@ -33,7 +33,7 @@ code/data; no fabrication; baselines must be fair.
   hide or inflate it.
 - **Two comparison frames — never conflate them:**
   - **(A) vs EXTERNAL baselines** (Table 1): HybridMTLNet *matches or surpasses*
-    them (+0.023 mIoU vs Mask R-CNN, +0.073 PCK vs YOLO26-Pose).
+    them (+0.023 mIoU vs Mask R-CNN, +0.078 PCK vs YOLO26-Pose).
   - **(B) vs OUR OWN single-task ablation** (Table 3): joint training is *slightly
     worse on pose* (the −0.0114 negative transfer) — same architecture.
   "matching or surpassing dedicated single-task baselines" = frame A. The honest
@@ -87,9 +87,16 @@ code/data; no fabrication; baselines must be fair.
   1:1000 → 0.8074/0.9694. (Table 2 is a single representative run; Table 1/3 are
   3-seed means — captions explain the difference. Fig. 3 is a *validation* curve,
   peak val PCK 0.9595, ≠ the test numbers.)
-- **External baselines (Table 1):** Mask R-CNN (w/ aug, seed 42) mIoU 0.7854;
-  YOLO26m-Pose PCK 0.8872. These live in the `\mrcnnmiou` / `\mrcnndelta` macros
-  in the main.tex preamble.
+- **External baselines (Table 1) — UPDATED to 3-seed where feasible (2026-06-27):**
+  YOLO26m-Seg mIoU **0.5497 ± 0.0181** and YOLO26m-Pose PCK **0.8823 ± 0.0053**
+  are now 3-seed mean±std (`models/yolo_seg_multiseed.json`, `yolo_pose_multiseed.json`;
+  trained via `baselines/yolo/yolo_multiseed.py`). **Mask R-CNN stays single-run
+  0.7854** (seed 42, augmented) — the 3-seed run was abandoned because MRCNN at
+  100 epochs × 800px-internal × no-AMP costs ~7 h/seed (~20 h total) and would not
+  change conclusions (val peaks ~epoch 30; MRCNN seed-std ~±0.01 ≪ our +0.0229 seg
+  lead). Table 1 caption states this transparently (same split/res/protocol). maDLC
+  0.4098 = reference. `\mrcnnmiou`=0.7854, `\mrcnndelta`=+0.0229 (seg, unchanged);
+  pose Δ is the literal +0.0782 in Table 1 / §5.1 (was +0.0733 when YOLO-pose was 0.8872).
 
 Raw results: `models/multiseed_results.json` (keys: seg_only, pose_only, joint,
 joint_mg, joint_pg, joint_bi) and `models/sweep_results.json`. **These files are
@@ -217,9 +224,13 @@ The following edits have been applied to `paper/main.tex`:
   Conclusion.
 
 ### Open items (remaining before submit — need the user / external info)
-- **Baseline numbers** (Mask R-CNN 0.7854, YOLO26-Seg 0.5451, YOLO26-Pose 0.8872,
-  maDLC 0.4098) need verification against baseline run logs — not reproducible
-  from this repo alone (baselines trained elsewhere).
+- **Baseline numbers — RESOLVED (2026-06-27):** YOLO seg/pose re-run 3-seed
+  (0.5497±0.0181 / 0.8823±0.0053); Mask R-CNN kept single-run 0.7854 (compute cost,
+  transparent caption); maDLC 0.4098 reference. See §4 "External baselines". A new
+  **failure-cases figure** (Fig. fig:failure, `app/plot_failure_cases.py` →
+  `paper/figures/failure_cases.png`) was added to §5.2 (worst test cases by mIoU/PCK).
+  Paper now **15 pages = CCIS ceiling (13 body + 2 bib), zero headroom** — any further
+  addition risks 16; Fig. 3 is the cut-candidate if space is ever needed.
 - **DSAI submission:** upload the full paper PDF via EasyChair "Add file" (Submission
   25, due ~29 June 2026); confirm whether review is double-blind before uploading.
 - **Advisor approval** (Praisan Padungweang, co-author) required before submission.

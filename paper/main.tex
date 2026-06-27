@@ -244,7 +244,10 @@ of the corresponding channel.
 
 \noindent The two output heads are fixed-width---a two-channel
 mask and six heatmaps---so the network handles at most two
-instances per image, matching our dataset.
+instances per image, matching our dataset. For single-mouse images,
+the surplus mask and heatmap channels are supervised against empty
+(all-zero) targets, so the network learns to leave the extra slot
+blank rather than fabricate a second instance.
 
 \subsection{Loss Function}
 We train HybridMTLNet with a single multi-task objective. The overall
@@ -301,7 +304,7 @@ We overcome this by performing a three-step alignment at each training step. \te
 \begin{equation}
   C_{i,j} = 1 - \operatorname{IoU}(\hat{S}_i, S_j)
 \end{equation}
-Here $\hat{S}_i$ and $S_j$ denote the predicted and ground-truth instance masks. The larger the overlap, the higher the IoU and the lower the cost. \textbf{Step 2 --- Find the best matching.} We use the Hungarian algorithm (linear sum assignment) \cite{kuhn1955hungarian} to find the one-to-one matching with the lowest total cost, which is equivalent to the largest total mask overlap. \textbf{Step 3 --- Reorder the ground truth.} Using this matching, we reorder the ground-truth masks and heatmaps to match the output channels of the model, and only then compute $\mathcal{L}_{\text{total}}$. This guarantees that the gradient is consistent across training steps rather than contradictory. The assignment itself is non-differentiable and detached from the computation graph, so gradients flow through the loss but not through the assignment.
+Here $\hat{S}_i$ is the predicted mask binarized at a 0.5 sigmoid threshold and $S_j$ the ground-truth instance mask. The larger the overlap, the higher the IoU and the lower the cost. \textbf{Step 2 --- Find the best matching.} We use the Hungarian algorithm (linear sum assignment) \cite{kuhn1955hungarian} to find the one-to-one matching with the lowest total cost, which is equivalent to the largest total mask overlap. \textbf{Step 3 --- Reorder the ground truth.} Using this matching, we reorder the ground-truth masks and heatmaps to match the output channels of the model, and only then compute $\mathcal{L}_{\text{total}}$. This guarantees that the gradient is consistent across training steps rather than contradictory. The assignment itself is non-differentiable and detached from the computation graph, so gradients flow through the loss but not through the assignment.
 
 \subsection{Data Augmentation}
 To enhance generalization and robustness, we apply online data
@@ -396,24 +399,27 @@ costly than HybridMTLNet's single forward pass.
 \subsection{Quantitative Comparison}
 
 \begin{table}[t]
-\caption{Test set performance. Our model is reported as the
-mean~$\pm$~standard deviation over three seeds; the baselines follow
-their own standard single-run recipe. Best results in \textbf{bold};
-``—'' indicates the model does not perform that task.}
+\caption{Test set performance. YOLO baselines and HybridMTLNet are
+reported as the mean~$\pm$~standard deviation over three random seeds;
+Mask R-CNN is reported from a single representative run due to its high
+training cost, using the same data split, input resolution, and
+evaluation protocol. DeepLabCut is included as a reference baseline.
+Best results in \textbf{bold}; ``—'' indicates the model does not
+perform that task.}
 \label{tab:results}
 \centering
 \begin{tabular}{lccc}
 \toprule
 \textbf{Model} & \textbf{Tasks} & \textbf{mIoU} & \textbf{PCK@0.05} \\
 \midrule
-YOLO26m-Seg          & Seg only  & 0.5451 & —      \\
+YOLO26m-Seg          & Seg only  & 0.5497\,$\pm$\,0.0181 & —      \\
 Mask R-CNN           & Seg only  & \mrcnnmiou & —      \\
-YOLO26m-Pose         & Pose only & —      & 0.8872 \\
+YOLO26m-Pose         & Pose only & —      & 0.8823\,$\pm$\,0.0053 \\
 DeepLabCut (maDLC)   & Pose only & —      & 0.4098 \\
 \midrule
 \textbf{HybridMTLNet (Ours)} & \textbf{Seg + Pose} & \textbf{0.8083\,$\pm$\,0.0012} & \textbf{0.9605\,$\pm$\,0.0027} \\
 \midrule
-\multicolumn{2}{l}{\(\Delta\) vs.\ best single-task} & \mrcnndelta & +0.0733 \\
+\multicolumn{2}{l}{\(\Delta\) vs.\ best single-task} & \mrcnndelta & +0.0782 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -423,8 +429,8 @@ baselines. Table~\ref{tab:results} reports the results for both the
 instance segmentation and keypoint estimation tasks.
 
 In the instance segmentation task, HybridMTLNet attains an mIoU of
-0.8083, above the strongest segmentation baseline (Mask R-CNN,
-\mrcnnmiou). Because our dense per-pixel decoder predicts
+0.8083, above the strongest segmentation baseline (the single-run
+Mask R-CNN, \mrcnnmiou). Because our dense per-pixel decoder predicts
 at the full $256 \times 256$ resolution, it avoids the RoI-quantization
 that limits boundary precision in proposal-based mask heads. Our
 ablation (Section~\ref{sec:ablation}) confirms that this segmentation
@@ -432,7 +438,7 @@ quality stems from the architecture, not from multi-task learning
 synergy.
 
 For pose estimation, HybridMTLNet achieves a Percentage of Correct
-Keypoints (PCK@0.05) of 0.9605, an absolute gain of 0.0733 over
+Keypoints (PCK@0.05) of 0.9605, an absolute gain of 0.0782 over
 YOLO26m-Pose. We include multi-animal DeepLabCut (maDLC) as a
 domain-standard reference, which scores 0.4098. This figure reflects
 the difficulty of our evaluation protocol rather than a weakness of
@@ -452,7 +458,11 @@ images from each of the eight behavioral tests. In all cases, our
 approach produces per-instance segmentation masks and three-keypoint
 skeletons simultaneously for up to two subjects in a single forward
 pass, indicating that the shared encoder learns features that generalize
-across diverse scenarios.
+across diverse scenarios. Figure~\ref{fig:failure} complements this with
+the hardest cases (lowest mIoU/PCK): errors concentrate in low-contrast
+arenas, reflective scenes, and self-occluded postures rather than in a
+single architectural weakness, motivating contrast-aware augmentation as
+future work.
 
 \begin{figure}[t]
   \centering
@@ -463,37 +473,50 @@ across diverse scenarios.
   \label{fig:qualitative}
 \end{figure}
 
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/failure_cases.png}
+  \caption{Failure cases: the worst test images by per-instance mIoU and
+  PCK. Predicted masks and keypoint skeletons are overlaid; white crosses
+  mark ground-truth keypoints. Errors concentrate in low-contrast arenas
+  (Morris water maze, \texttt{mwm}), reflective scenes (\texttt{mirror}),
+  and self-occluded postures (\texttt{elev}), rather than in a single
+  architectural weakness.}
+  \label{fig:failure}
+\end{figure}
+
 \subsection{Loss-Weight Selection}
 \label{sec:weights}
-We justify the pose-loss weight \(\lambda_{\text{pose}}\) empirically by
-training the joint model across a range of seg:pose ratios
-(Table~\ref{tab:weights}). Segmentation mIoU is stable across all
-ratios (\(0.806\)--\(0.811\)), confirming it is insensitive to the
-pose weight. Pose PCK, in contrast, rises sharply with
-\(\lambda_{\text{pose}}\)---from 0.751 at 1:1 to 0.962 at 1:400---then
-saturates. We select \(1{:}500\) as a balanced operating point: its PCK
-(0.9678) sits at the saturation ceiling while its mIoU (0.8097) stays
-high. Pushing the weight to 1:1000 yields a negligible PCK gain (0.9694)
-but lowers mIoU, trading segmentation for pose; we prefer 1:500 to avoid
-sacrificing either task.
+We select the pose-loss weight \(\lambda_{\text{pose}}\) on the
+validation set, training the joint model across a range of seg:pose
+ratios (Table~\ref{tab:weights}). Validation mIoU is stable across all
+ratios (\(0.785\)--\(0.796\)), confirming segmentation is insensitive to
+the pose weight. Validation PCK, in contrast, rises sharply with
+\(\lambda_{\text{pose}}\)---from 0.741 at 1:1 to 0.958 at 1:400---then
+saturates. We adopt \(1{:}500\) as a balanced operating point: its PCK
+(0.9595) sits in the saturated region while its mIoU (0.7948) stays
+high. Pushing the weight to 1:1000 yields a negligible PCK gain (0.9611)
+but no benefit to segmentation; we prefer 1:500 to avoid sacrificing
+either task. The test set is reserved for final evaluation
+(Table~\ref{tab:results}).
 
 \begin{table}[t]
-\caption{Loss-weight ratio (seg:pose) on the joint model; test-set
-scores for a single representative run (Fig.~\ref{fig:training} tracks
-validation). mIoU stays stable while PCK rises with the pose weight then
-saturates; we adopt 1:500, whose 3-seed mean is reported in
-Table~\ref{tab:results}.}
+\caption{Loss-weight ratio (seg:pose) on the joint model;
+validation-set scores for a single representative run, used to select
+\(\lambda_{\text{pose}}\). mIoU stays stable while PCK rises with the
+pose weight then saturates; we adopt 1:500, whose 3-seed test mean is
+reported in Table~\ref{tab:results}.}
 \label{tab:weights}
 \centering
 \begin{tabular}{lcc}
 \toprule
 \textbf{Ratio (seg:pose)} & \textbf{mIoU} & \textbf{PCK@0.05} \\
 \midrule
-1:1    & 0.8105 & 0.7511 \\
-1:100  & 0.8061 & 0.7960 \\
-1:400  & 0.8114 & 0.9617 \\
-\textbf{1:500} & 0.8097 & 0.9678 \\
-1:1000 & 0.8074 & 0.9694 \\
+1:1    & 0.7867 & 0.7413 \\
+1:100  & 0.7854 & 0.8031 \\
+1:400  & 0.7955 & 0.9580 \\
+\textbf{1:500} & 0.7948 & 0.9595 \\
+1:1000 & 0.7915 & 0.9611 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -554,10 +577,14 @@ instance's keypoint channels, and the predicted heatmaps prime the
 segmentation decoder. Pose PCK then rises from $0.9605$ to $0.9667$ with
 segmentation unchanged (Table~\ref{tab:ablation}), recovering about half
 the gap to the pose-only ceiling. This mitigates the negative transfer
-but does not remove it; closing it fully would need the heavier,
-gradient-coupled fusion of joint human parsing and pose
-\cite{nie2018mula,xu2018padnet}, left to future work as it conflicts
-with our real-time design.
+but does not remove it, and the gain is small relative to seed
+variation. We therefore keep the plain joint model---the minimal
+unified architecture, and the clean setting in which we measure
+transfer---as our main result, treating the cross-task link as an
+optional enhancement rather than the headline. Fully closing the gap
+would need heavier gradient-coupled fusion of joint human parsing and
+pose \cite{nie2018mula,xu2018padnet}, which conflicts with our real-time
+design and is left to future work.
 
 The main advantage of HybridMTLNet is therefore not multi-task accuracy
 synergy but architectural unification and efficiency: a single pipeline
@@ -592,7 +619,7 @@ single-task copies of the same architecture, which isolates the benefit
 of the shared encoder (Table~\ref{tab:efficiency}). Running both tasks
 in a single pass, HybridMTLNet uses only 28.7\,M parameters and
 28.8\,GFLOPs---about half the modular pipeline's 57.4\,M / 57.5\,GFLOPs---and
-reaches 111.8\,FPS on an NVIDIA RTX~5060 GPU (14.8\,FPS on CPU) versus
+reaches 111.8\,FPS (8.9\,ms/frame) on an NVIDIA RTX~5060 GPU (14.8\,FPS on CPU) versus
 55.9\,FPS. As laboratory recordings typically run at 30--60\,FPS, this
 comfortably supports real-time deployment in resource-constrained
 settings.
