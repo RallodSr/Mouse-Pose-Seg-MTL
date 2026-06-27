@@ -53,7 +53,7 @@ segmentation decoder, and a deconvolutional pose head. During training,
 we apply Hungarian matching on mask IoU to assign predictions to
 ground-truth instances in an order-invariant manner. We evaluate
 HybridMTLNet on 3{,}710 manually annotated images spanning eight mouse
-behavioral tests, averaged over three random seeds. Our model achieves
+behavioral tests. Averaged over three random seeds, our model achieves
 a Percentage of Correct Keypoints (PCK@0.05) of 0.9605 and a mean
 Intersection over Union (mIoU) of 0.8083, matching or surpassing
 dedicated single-task baselines. A controlled ablation shows that the
@@ -99,7 +99,7 @@ The main contributions of this work are summarized as follows:
   \item \textbf{Order-invariant training.} Hungarian matching on mask
         IoU that assigns predictions to ground-truth instances,
         resolving the label-switching ambiguity of joint training.
-  \item \textbf{Honest empirical evaluation.} On 3{,}710 manually
+  \item \textbf{Controlled empirical evaluation.} On 3{,}710 manually
         annotated images spanning eight mouse behavioral tests,
         HybridMTLNet reaches a PCK@0.05 of 0.9605 and an mIoU of 0.8083,
         matching or surpassing dedicated single-task baselines while
