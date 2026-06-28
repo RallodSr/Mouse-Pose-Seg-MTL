@@ -72,7 +72,13 @@ research, where accurate monitoring lets researchers quantify complex
 behaviors, evaluate phenotypic variation, and assess pharmacological
 interventions. Two computer-vision tasks underpin this analysis:
 instance segmentation, which outlines each animal's body, and pose
-estimation, which locates its joints. In practice, however, these
+estimation, which locates its joints. Both tasks are individually well
+served by modern deep models: instance-segmentation methods such as
+Mask R-CNN \cite{he2017maskrcnn} and the real-time YOLO family
+\cite{jocher2026yolo26} produce accurate masks at high frame rates,
+while pose estimators such as HRNet \cite{sun2019hrnet} and the
+markerless trackers DeepLabCut \cite{mathis2018deeplabcut} and SLEAP
+\cite{pereira2022sleap} localize keypoints with high precision. In practice, however, these
 usually run as two separate pipelines, which wastes computation, or
 rely on proposal-driven detectors that blur object boundaries through
 coarse, fixed-resolution mask prediction.
