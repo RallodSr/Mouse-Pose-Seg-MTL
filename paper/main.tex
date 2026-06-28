@@ -460,10 +460,11 @@ over maDLC in its intended video setting.
 Because HybridMTLNet emits a fixed two-channel mask, we also report
 instance-level precision and recall, treating each non-empty channel as
 a detection matched to ground truth at IoU\,$>$\,0.5. The raw output
-reaches 0.95 recall but only 0.64 precision: on single-mouse images the
-unused channel usually duplicates the instance. A simple mask-overlap
-suppression (IoU\,$>$\,0.5) restores precision to 0.93 with recall and
-matched-instance mIoU essentially unchanged. These duplicates overlap
+reaches 0.948 recall but only 0.638 precision (266 false positives): on
+single-mouse images the unused channel usually duplicates the instance.
+A simple mask-overlap suppression (IoU\,$>$\,0.5) raises precision to
+0.930 (35 false positives) with recall (0.939) and matched-instance
+mIoU (0.817) essentially unchanged. These duplicates overlap
 the true instance and are trivially removed; they do not affect the
 matched-instance metrics in Table~\ref{tab:results}.
 
@@ -689,9 +690,10 @@ extended to variable, higher-density counts. Second, HybridMTLNet
 processes only static frames; adding temporal tracking to exploit
 cross-frame continuity would improve robustness for continuous
 video-based behavioral phenotyping. Third, the dataset is split at the
-image level, so frames from the same recording session may span
-partitions; while this keeps the comparison fair, a session-level split
-would more strictly test generalization to unseen sessions.
+image level, so images from the same recording session may span
+partitions; although all models are evaluated under the same split, a
+session-level split would more strictly test generalization to unseen
+sessions.
 
 % ------------------------------------------------------------------
 \paragraph{Ethics Statement.}
