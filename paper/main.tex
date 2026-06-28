@@ -246,8 +246,11 @@ of the corresponding channel.
 mask and six heatmaps---so the network handles at most two
 instances per image, matching our dataset. For single-mouse images,
 the surplus mask and heatmap channels are supervised against empty
-(all-zero) targets, so the network learns to leave the extra slot
-blank rather than fabricate a second instance.
+(all-zero) targets. The network does not always leave this slot
+empty---it tends to replicate the single instance rather than invent a
+new one---but, as the replicas overlap, a simple suppression step
+removes them at inference without affecting the matched-instance
+metrics (Section~\ref{sec:quant}).
 
 \subsection{Loss Function}
 We train HybridMTLNet with a single multi-task objective. The overall
@@ -387,7 +390,9 @@ only for instance-level segmentation.
 \noindent\textbf{Pose estimation baselines:} YOLO26m-Pose
 \cite{jocher2026yolo26} and multi-animal DeepLabCut (maDLC)
 \cite{mathis2018deeplabcut}. These models only locate joint
-coordinates.
+coordinates. We exclude SLEAP \cite{pereira2022sleap}, which targets
+multi-animal pose tracking in video and outputs no dense instance
+masks, so it is not directly comparable on our joint task.
 
 All of these baselines are single-task. Obtaining both outputs
 therefore requires running two separate models, which is far more
@@ -397,6 +402,7 @@ costly than HybridMTLNet's single forward pass.
 \section{Results and Discussion}
 
 \subsection{Quantitative Comparison}
+\label{sec:quant}
 
 \begin{table}[t]
 \caption{Test set performance. YOLO baselines and HybridMTLNet are
@@ -448,6 +454,16 @@ frames, maDLC cannot exploit the temporal tracking and
 identity-assembly stages it is designed around. We therefore treat
 YOLO26m-Pose as the primary pose baseline and do not claim superiority
 over maDLC in its intended video setting.
+
+Because HybridMTLNet emits a fixed two-channel mask, we also report
+instance-level precision and recall, treating each non-empty channel as
+a detection matched to ground truth at IoU\,$>$\,0.5. The raw output
+reaches 0.95 recall but only 0.64 precision: on single-mouse images the
+unused channel usually duplicates the instance. A simple mask-overlap
+suppression (IoU\,$>$\,0.5) restores precision to 0.93 with recall and
+matched-instance mIoU essentially unchanged. These duplicates overlap
+the true instance and are trivially removed; they do not affect the
+matched-instance metrics in Table~\ref{tab:results}.
 
 In summary, each baseline is single-task and needs a separate pipeline
 per metric, whereas HybridMTLNet matches or exceeds them on both

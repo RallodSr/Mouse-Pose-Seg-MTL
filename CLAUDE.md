@@ -231,6 +231,19 @@ The following edits have been applied to `paper/main.tex`:
   `paper/figures/failure_cases.png`) was added to §5.2 (worst test cases by mIoU/PCK).
   Paper now **15 pages = CCIS ceiling (13 body + 2 bib), zero headroom** — any further
   addition risks 16; Fig. 3 is the cut-candidate if space is ever needed.
+- **Empty-slot false positives — ANALYZED + FIXED claim (2026-06-27):** the old §3.2
+  sentence ("network learns to leave the extra slot blank") was **FALSE** — the model
+  *replicates* the single instance in the surplus channel on ~95% of single-mouse
+  test images (median mask IoU 0.87 between the two channels; genuine separate-blob
+  hallucination only ~4.5%). §3.2 corrected to say so. `app/eval_with_nms.py` reports
+  instance-level P/R: **RAW P=0.64/R=0.95 → +NMS(IoU>0.5) P=0.93/R=0.94**, matched
+  mIoU unchanged (0.81→0.82) — duplicates overlap and are trivially removed; reported
+  mIoU/PCK are unaffected (channel-aligned eval skips the empty-GT slot). Added to
+  §5.1. `app/measure_empty_slot_fp.py` is the simpler count (98% non-empty slot).
+- **Mask R-CNN 3-seed — RE-RUNNING (2026-06-27):** user asked to do it after all;
+  `python -u baselines/maskrcnn/maskrcnn.py multiseed --seeds 42 43 44 --epochs 100`
+  (log `models/maskrcnn_3seed.log`, ~7 h/seed ≈ 20 h, val peaks ~epoch 25). When done,
+  replace single-run 0.7854 with 3-seed mean±std in Table 1 + recompute `\mrcnndelta`.
 - **DSAI submission:** upload the full paper PDF via EasyChair "Add file" (Submission
   25, due ~29 June 2026); confirm whether review is double-blind before uploading.
 - **Advisor approval** (Praisan Padungweang, co-author) required before submission.
