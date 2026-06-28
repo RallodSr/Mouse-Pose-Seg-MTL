@@ -139,12 +139,9 @@ resolving any inconsistencies via consensus. Since the framework
 requires no bounding boxes, annotations consist of masks and keypoints
 only. For experimental evaluation, the dataset is partitioned into
 training (2{,}968), validation (371), and testing (371) sets according
-to an 80/10/10 ratio. Because the dataset is split at the image level,
-images from the same recording session may appear across training,
-validation, and test partitions. Although all models are evaluated under
-the same split, this protocol may overestimate generalization to
-entirely unseen sessions; a stricter session-level split is left for
-future work. While the source photographs feature mixed
+to an 80/10/10 ratio, with images assigned to partitions at the image
+level (we revisit this choice as a limitation in
+Section~\ref{sec:conclusion}). While the source photographs feature mixed
 resolutions ($640\times360$ and $1280\times720$), all subsequent
 models are trained and evaluated at a standardized spatial resolution
 of $256\times256$.
@@ -666,6 +663,7 @@ Modular (2 models)           & 57.4 & 57.5 & 55.9 & 7.4 \\
 
 % ------------------------------------------------------------------
 \section{Conclusion}
+\label{sec:conclusion}
 We propose HybridMTLNet, a unified box-free multi-task learning
 framework for simultaneous instance segmentation and keypoint
 estimation of laboratory mice in one forward pass. This lets us
@@ -685,12 +683,15 @@ architectural unification and efficiency---halving parameters and
 computational complexity while doubling throughput on off-the-shelf
 hardware.
 
-Our approach offers clear advantages, but two limitations point to
+Our approach offers clear advantages, but three limitations point to
 future work. First, the fixed two-instance output head should be
 extended to variable, higher-density counts. Second, HybridMTLNet
 processes only static frames; adding temporal tracking to exploit
 cross-frame continuity would improve robustness for continuous
-video-based behavioral phenotyping.
+video-based behavioral phenotyping. Third, the dataset is split at the
+image level, so frames from the same recording session may span
+partitions; while this keeps the comparison fair, a session-level split
+would more strictly test generalization to unseen sessions.
 
 % ------------------------------------------------------------------
 \paragraph{Ethics Statement.}

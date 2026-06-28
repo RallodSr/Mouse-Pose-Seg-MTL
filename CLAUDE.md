@@ -246,9 +246,10 @@ The following edits have been applied to `paper/main.tex`:
   replace single-run 0.7854 with 3-seed mean±std in Table 1 + recompute `\mrcnndelta`.
 - **Split limitation — NOW ACKNOWLEDGED (2026-06-27):** split is image-level random
   (prepare.py); 2 reviewers flagged possible same-session leakage. Reversed the earlier
-  "keep silent" call → §3.1 now states the image-level split may overestimate
-  generalization to unseen sessions (comparison still fair, same split for all);
-  session-level split = future work. Do NOT re-debate; it is intentionally disclosed.
+  "keep silent" call → §3.1 states the split is image-level; the Conclusion lists
+  it as the **third limitation** (may overestimate generalization to unseen sessions;
+  comparison still fair, same split for all; session-level split = future work). Do
+  NOT re-debate; it is intentionally disclosed.
 - **DSAI submission:** upload the full paper PDF via EasyChair "Add file" (Submission
   25, due ~29 June 2026); confirm whether review is double-blind before uploading.
 - **Advisor approval** (Praisan Padungweang, co-author) required before submission.
