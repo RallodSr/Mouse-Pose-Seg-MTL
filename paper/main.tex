@@ -139,7 +139,12 @@ resolving any inconsistencies via consensus. Since the framework
 requires no bounding boxes, annotations consist of masks and keypoints
 only. For experimental evaluation, the dataset is partitioned into
 training (2{,}968), validation (371), and testing (371) sets according
-to an 80/10/10 ratio. While the source photographs feature mixed
+to an 80/10/10 ratio. Because the dataset is split at the image level,
+images from the same recording session may appear across training,
+validation, and test partitions. Although all models are evaluated under
+the same split, this protocol may overestimate generalization to
+entirely unseen sessions; a stricter session-level split is left for
+future work. While the source photographs feature mixed
 resolutions ($640\times360$ and $1280\times720$), all subsequent
 models are trained and evaluated at a standardized spatial resolution
 of $256\times256$.
