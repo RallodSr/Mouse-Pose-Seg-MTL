@@ -1,226 +1,115 @@
-# Mouse Pose & Segmentation — Hybrid Multi-Task Learning
+# HybridMTLNet: Box-Free Instance Segmentation and Pose Estimation of Laboratory Mice
 
-วิทยานิพนธ์: การนำ Multi-Task Learning มาใช้สำหรับ Instance Segmentation และ Keypoint Estimation บนภาพหนูทดลองในห้องปฏิบัติการ ด้วยโมเดลเดียว (single shared encoder)
+A single network that outputs a **mask for every mouse** and its **keypoints** (nose, shoulder,
+tail base) **in one forward pass**, for behavioural studies of laboratory mice.
 
-> หมายเหตุ: การเปรียบเทียบกับ baseline ภายนอก (YOLO, DeepLabCut, SLEAP) อยู่ในส่วน paper เท่านั้น โปรเจกต์นี้เก็บเฉพาะส่วน MTL (HybridMTLNet)
+> **Paper:** *A Unified Box-Free Network for Joint Instance Segmentation and Pose Estimation of
+> Laboratory Mice.* T. Sripanya, P. Padungweang, Y. Chulikhit, C. Dechsupa, K. Sunat.
+> International Conference on Data Science and Artificial Intelligence (DSAI 2026),
+> Springer CCIS — accepted, in press.
 
----
+![Qualitative results on the eight behavioural tests](paper/figures/qualitative_results.png)
 
-## ภาพรวมของระบบ
+## Why
 
-| โมเดล | Architecture | Task | Metric |
-|---|---|---|---|
-| **HybridMTLNet** | ResNet-34 + U-Net decoder + Deconv head | Segmentation + Pose พร้อมกัน | mIoU + PCK |
+Behavioural pharmacology needs both outputs from the same frame: masks give body area, shape and
+contact between animals; keypoints give heading and body axis. The tools rodent laboratories use
+predict pose only, so masks need a second model and every image is processed twice.
+Detection-based joint models such as Mask R-CNN crop each animal and predict its mask on a
+28 × 28 grid, which blurs thin parts such as the tail.
 
-**HybridMTLNet** ใช้ ResNet-34 เป็น shared encoder โดย segmentation decoder เป็น U-Net (2 channels = 2 instance masks) และ pose head เป็น deconvolutional head (6 channels = 3 keypoints × 2 ตัว) การ assign instance ใช้ **Hungarian matching** บน mask IoU ทำให้ไม่ต้องเรียนรู้ลำดับ instance ที่ตายตัว
+HybridMTLNet shares one encoder between both tasks and predicts masks at full resolution, with
+no bounding boxes or region crops.
 
----
+## Architecture
 
-## ผลการทดลอง
+![HybridMTLNet architecture](docs/assets/architecture.png)
 
-| Metric | Score |
-|---|---|
-| mIoU | **0.8105** |
-| PCK@0.05 | **0.9542** |
+- **Shared encoder:** ImageNet-pretrained ResNet-34 (21.3 M parameters).
+- **Segmentation decoder:** U-Net-style, with skip connections; two mask channels, one per mouse,
+  at 256 × 256 (3.2 M).
+- **Pose head:** three transposed convolutions; six heatmaps, three keypoints for each of two
+  mice (4.2 M).
+- **Order-invariant matching:** the two output slots have no fixed order, so the ground truth is
+  matched to them with the Hungarian algorithm on mask IoU at every training step (with two
+  slots this is permutation-invariant training, as in Yu et al. 2017 and DETR).
+- **Loss:** BCE + Dice for masks, plus 500 × MSE for heatmaps.
 
-HybridMTLNet ใช้ loss ratio seg:pose = 1:500 (seed=42) ผลเปรียบเทียบกับ baseline ภายนอกดูได้ใน `paper/main.tex`
+**28.7 M parameters in total**, one forward pass for both outputs.
 
----
+## Results
 
-## โครงสร้างโปรเจกต์
+Test set of 371 images from 8 behavioural tests (3,710 annotated images in total), 256 × 256,
+mean ± std over 3 seeds unless marked. As reported in the paper:
 
-```
-Mouse-Pose-Seg-MTL/
-│
-├── data/                          ← raw images, masks, annotations  [gitignored]
-│   ├── images/                    ← ภาพต้นฉบับ (.png / .jpg)
-│   ├── masks/                     ← binary mask ของหนูแต่ละตัว
-│   ├── label_studio_export.json   ← export จาก Label Studio
-│   └── dataset.json               ← dataset กลางที่สร้างจาก prepare
-│
-├── models/                        ← saved weights & checkpoints      [gitignored]
-│   ├── checkpoints/               ← ผลจากการ train MTL
-│   └── inference_output/          ← ผลจาก inference
-│
-├── src/                           ← MTL model (OOP)
-│   ├── data/
-│   │   ├── dataset.py             ← MouseMTLDataset (PyTorch Dataset)
-│   │   └── prepare.py             ← prepare_dataset (Label Studio → dataset.json)
-│   ├── models/
-│   │   └── mtl_net.py             ← HybridMTLNet architecture
-│   ├── training/
-│   │   └── trainer.py             ← Trainer class (train loop, plotting)
-│   ├── evaluation/
-│   │   ├── metrics.py             ← calculate_miou, calculate_pck
-│   │   ├── evaluator.py           ← Evaluator class (unified test eval)
-│   │   └── benchmark.py           ← Benchmark class (params/FLOPs/FPS)
-│   └── experiments/               ← train-and-compare studies (OOP)
-│       ├── base.py                ← Experiment (base class)
-│       ├── weight_ratio.py        ← WeightRatioExperiment
-│       └── single_task.py         ← SingleTaskAblation
-│
-├── baselines/                     ← baseline models (แยกจาก MTL)
-│   ├── maskrcnn.py                ← Mask R-CNN seg baseline
-│   └── yolo/                      ← YOLO eval + inference scripts
-│
-├── app/                           ← inference scripts
-│   ├── infer_images.py            ← MTL inference บนโฟลเดอร์รูป
-│   └── infer_mtl_video.py         ← MTL inference บนวิดีโอ
-│
-├── paper/
-│   ├── main.tex                   ← IEEE conference paper (LaTeX)
-│   └── references.bib
-│
-├── config.py                      ← hyperparameters และ paths ทั้งหมด
-├── main.py                        ← CLI entry point (prepare/train/eval/experiment)
-├── requirements.txt
-└── .gitignore
-```
+| Model | Task | mIoU | PCK@0.05 |
+|---|---|:-:|:-:|
+| **HybridMTLNet (ours)** | **masks + keypoints** | **0.8083 ± 0.0012** | **0.9605 ± 0.0027** |
+| Mask R-CNN (single run) | masks | 0.7854 | — |
+| YOLO26m-Seg | masks | 0.5497 ± 0.0181 | — |
+| YOLO26m-Pose | keypoints | — | 0.8823 ± 0.0053 |
 
----
+Ablation on the same architecture:
 
-## Requirements
+| Training | mIoU | PCK@0.05 |
+|---|:-:|:-:|
+| Segmentation only | 0.8089 ± 0.0009 | — |
+| Pose only | — | 0.9719 ± 0.0018 |
+| Joint (ours) | 0.8083 ± 0.0012 | 0.9605 ± 0.0027 |
 
-- Python 3.10+
-- CUDA-compatible GPU (แนะนำ VRAM ≥ 6 GB สำหรับ batch size 16)
-- PyTorch 2.0+
+Joint training keeps segmentation accuracy and costs 0.0114 PCK against the pose-only network: a
+small negative transfer that the paper reports rather than hides. The contribution is a single
+network for both outputs, not a multi-task accuracy gain.
 
----
+**Re-evaluation after publication.** For the M.Sc. thesis the baselines are being re-run on a
+stricter common footing (tuned inference settings, one mask threshold, three seeds each, and a
+joint Mask R-CNN with mask and keypoint heads). The margins over the published baselines narrow
+under that protocol; the updated comparison will be reported in the thesis.
 
-## การติดตั้ง
+## Usage
 
 ```bash
-# 1. Clone repository
-git clone <repo-url>
-cd Mouse-Pose-Seg-MTL
-
-# 2. สร้าง virtual environment
 python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# macOS / Linux
-source venv/bin/activate
-
-# 3. ติดตั้ง dependencies
-pip install -r requirements.txt
-```
-
----
-
-## การเตรียมข้อมูล
-
-โครงสร้างข้อมูลที่ต้องการ:
-
-```
-data/
-├── images/           ← ภาพต้นฉบับ
-├── masks/            ← binary mask (naming: <image_name>_<mouse_index>.png)
-└── label_studio_export.json
-```
-
-**Keypoints:** `nose`, `shoulder`, `tail` (3 จุดต่อตัว, สูงสุด 2 ตัวต่อภาพ)
-
-```bash
-# แปลง Label Studio export → dataset.json (แบ่ง 80/10/10)
-python main.py prepare
-```
-
----
-
-## การ Train โมเดล
-
-```bash
-# Train ด้วย config ใน config.py
-python main.py train
-
-# Override loss weight ratio จาก CLI
-python main.py train --pose-weight 500 --run-name my_run
-```
-
-hyperparameters หลักใน `config.py`:
-
-```python
-loss_seg_weight: float = 1
-loss_pose_weight: float = 500   # ปรับ ratio เพื่อ balance BCE+Dice vs MSE
-epochs: int = 100
-lr: float = 1e-4
-```
-
-> **หมายเหตุ:** MSE heatmap loss มีขนาดเล็กกว่า BCE+Dice ประมาณ 500× โดยธรรมชาติ ต้องตั้ง `loss_pose_weight` สูงพอเพื่อให้ pose head เรียนรู้ได้
-
-### Ablation Study
-
-```bash
-# Loss weight ratio ablation
-python main.py experiment --type weight-ratio              # รัน configs แล้วเปรียบเทียบ
-python main.py experiment --type weight-ratio --eval-only
-
-# Single-task vs joint MTL ablation
-python main.py experiment --type single-task               # train seg-only / pose-only / joint
-python main.py experiment --type single-task --eval-only
-```
-
-single-task ablation เทรน **architecture เดียวกัน** 3 แบบ:
-
-| Config | seg_weight | pose_weight | Metric ที่วัด |
-|---|---|---|---|
-| Seg-only | 1 | 0 | mIoU |
-| Pose-only | 0 | 500 | PCK |
-| Joint MTL | 1 | 500 | mIoU + PCK |
-
-เพื่อแยกผลของ multi-task learning ออกจากผลของสถาปัตยกรรม (ดูผลและการอภิปรายใน `paper/main.tex`)
-
----
-
-## การประเมินผล
-
-```bash
-python main.py eval --weights models/checkpoints/model_final.pth
-```
-
-**Metrics:**
-- **mIoU** — per-instance IoU เฉลี่ยจาก Hungarian-matched pairs
-- **PCK@0.05** — keypoint ที่ทำนายได้ภายใน 5% ของขนาดภาพ (12.8 px ที่ 256×256) ตาม Yang & Ramanan (CVPR 2013)
-
-### Efficiency Benchmark
-
-```bash
-python main.py benchmark              # params / FLOPs / FPS (GPU + CPU)
-```
-
-วัด HybridMTLNet (1 forward pass → seg+pose) เทียบกับ modular pipeline 2 โมเดล — แสดงว่า unified ใช้ params/FLOPs ครึ่งเดียวและ FPS ~2 เท่า
-
----
-
-## Inference
-
-```bash
-# บนโฟลเดอร์รูปภาพ
-python app/infer_images.py --input data/images --weights models/checkpoints/model_final.pth
-
-# บนวิดีโอ
-python app/infer_mtl_video.py --input video.mp4 --weights models/checkpoints/model_final.pth --output models/inference_output/result.mp4
-```
-
----
-
-## สรุปขั้นตอน (Quick Reference)
-
-```bash
-# 1. ติดตั้ง
+# Windows: venv\Scripts\activate    Linux/macOS: source venv/bin/activate
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128   # RTX 50-series
 pip install -r requirements.txt
 
-# 2. เตรียมข้อมูล
-python main.py prepare
-
-# 3. Train
-python main.py train
-
-# 4. Evaluate
-python main.py eval --weights models/checkpoints/model_final.pth
-
-# 5. Inference
-python app/infer_images.py --input data/images --weights models/checkpoints/model_final.pth
+python main.py prepare            # Label Studio export -> data/dataset.json
+python main.py train              # joint training, seg:pose = 1:500
+python main.py eval --weights models/checkpoints/model_best.pth
+python main.py benchmark          # parameters, FLOPs and latency
+python app/run_multiseed.py --seeds 42 43 44   # seg-only / pose-only / joint ablation
 ```
+
+The dataset (`data/`) and trained weights (`models/`) are not included in this repository.
+
+## Repository layout
+
+```
+config.py                 data, model and training configuration
+main.py                   prepare / train / eval / experiment / benchmark
+src/models/mtl_net.py     HybridMTLNet
+src/training/trainer.py   training loop, Hungarian matching, loss
+src/evaluation/           mIoU, PCK and the efficiency benchmark
+baselines/                Mask R-CNN and YOLO baselines
+app/                      multi-seed runs, sweeps, figures
+paper/                    LaTeX source of the paper
+```
+
+## Citation
+
+```bibtex
+@inproceedings{sripanya2026hybridmtlnet,
+  title     = {A Unified Box-Free Network for Joint Instance Segmentation and Pose Estimation of Laboratory Mice},
+  author    = {Sripanya, Thanabat and Padungweang, Praisan and Chulikhit, Yaowared and Dechsupa, Chanon and Sunat, Khamron},
+  booktitle = {International Conference on Data Science and Artificial Intelligence (DSAI 2026)},
+  series    = {Communications in Computer and Information Science},
+  publisher = {Springer},
+  year      = {2026},
+  note      = {Accepted, in press}
+}
+```
+
+## Acknowledgements
+
+College of Computing and Faculty of Pharmaceutical Sciences, Khon Kaen University.

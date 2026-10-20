@@ -38,3 +38,10 @@ desktop.ini
 
 # Misc
 *.log
+
+# Personal tool settings (not part of the work)
+CLAUDE.md
+.claude/
+
+# Videos (lab footage; release needs the Faculty of Pharmaceutical Sciences' permission)
+*.mp4
